@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "BrandReady"
+version = "1.0.0"
+id = "artifacts/brand-ready"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 25344
+
+[services.development]
+run = "pnpm --filter @workspace/brand-ready run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/brand-ready", "run", "build" ]
+publicDir = "artifacts/brand-ready/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "25344"
+BASE_PATH = "/"

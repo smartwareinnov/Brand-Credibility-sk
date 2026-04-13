@@ -1,0 +1,1457 @@
+openapi: 3.1.0
+info:
+  title: Api
+  version: 0.1.0
+  description: Skorvia API - Brand credibility and ad-readiness analyzer
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: analyses
+    description: Brand analysis operations
+  - name: tasks
+    description: Action plan task operations
+  - name: subscriptions
+    description: Subscription and payment operations
+  - name: dashboard
+    description: Dashboard summary operations
+  - name: user
+    description: User profile and billing operations
+  - name: admin
+    description: Admin settings and management operations
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /analyses:
+    get:
+      operationId: listAnalyses
+      tags: [analyses]
+      summary: List all analyses for the session/user
+      responses:
+        "200":
+          description: List of analyses
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Analysis"
+    post:
+      operationId: createAnalysis
+      tags: [analyses]
+      summary: Create a new brand analysis
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAnalysisBody"
+      responses:
+        "201":
+          description: Analysis created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Analysis"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /analyses/{id}:
+    get:
+      operationId: getAnalysis
+      tags: [analyses]
+      summary: Get a specific analysis
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Analysis details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Analysis"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /analyses/{id}/run:
+    post:
+      operationId: runAnalysis
+      tags: [analyses]
+      summary: Trigger the AI analysis process for a brand
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Analysis started or completed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalysisResult"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /analyses/{id}/tasks:
+    get:
+      operationId: listAnalysisTasks
+      tags: [tasks]
+      summary: Get all action plan tasks for an analysis
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of tasks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ActionTask"
+
+  /tasks/{id}/complete:
+    patch:
+      operationId: completeTask
+      tags: [tasks]
+      summary: Mark a task as completed
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Task updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActionTask"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /tasks/{id}/uncomplete:
+    patch:
+      operationId: uncompleteTask
+      tags: [tasks]
+      summary: Mark a task as not completed
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Task updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActionTask"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /subscriptions/plans:
+    get:
+      operationId: listPlans
+      tags: [subscriptions]
+      summary: List available subscription plans with localized pricing
+      parameters:
+        - name: currency
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Subscription plans
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SubscriptionPlan"
+
+  /subscriptions/detect-currency:
+    get:
+      operationId: detectCurrency
+      tags: [subscriptions]
+      summary: Detect user currency based on IP geolocation
+      responses:
+        "200":
+          description: Detected currency info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CurrencyInfo"
+
+  /subscriptions/initiate-payment:
+    post:
+      operationId: initiatePayment
+      tags: [subscriptions]
+      summary: Initiate a Flutterwave payment for subscription
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InitiatePaymentBody"
+      responses:
+        "200":
+          description: Payment initiated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentInitResponse"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /subscriptions/verify-payment:
+    post:
+      operationId: verifyPayment
+      tags: [subscriptions]
+      summary: Verify a Flutterwave payment after redirect
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VerifyPaymentBody"
+      responses:
+        "200":
+          description: Payment verified
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentVerifyResponse"
+        "400":
+          description: Verification failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [dashboard]
+      summary: Get dashboard summary stats
+      responses:
+        "200":
+          description: Dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+
+  /dashboard/recent-analyses:
+    get:
+      operationId: getRecentAnalyses
+      tags: [dashboard]
+      summary: Get the 5 most recent analyses
+      responses:
+        "200":
+          description: Recent analyses list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Analysis"
+
+  /user/profile:
+    get:
+      operationId: getUserProfile
+      tags: [user]
+      summary: Get user profile for a session
+      parameters:
+        - name: sessionId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+    patch:
+      operationId: updateUserProfile
+      tags: [user]
+      summary: Update user profile
+      parameters:
+        - name: sessionId
+          in: query
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUserProfileBody"
+      responses:
+        "200":
+          description: Updated user profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+
+  /user/brand-profile:
+    get:
+      operationId: getUserBrandProfile
+      tags: [user]
+      summary: Get user's saved brand profile
+      parameters:
+        - name: sessionId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Brand profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BrandProfile"
+        "404":
+          description: No brand profile yet
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    put:
+      operationId: updateUserBrandProfile
+      tags: [user]
+      summary: Create or update user's brand profile
+      parameters:
+        - name: sessionId
+          in: query
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateBrandProfileBody"
+      responses:
+        "200":
+          description: Saved brand profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BrandProfile"
+
+  /user/subscription:
+    get:
+      operationId: getUserSubscription
+      tags: [user]
+      summary: Get subscription status and payment history for user
+      parameters:
+        - name: email
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Subscription status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubscriptionStatus"
+
+  /admin/settings:
+    get:
+      operationId: getAdminSettings
+      tags: [admin]
+      summary: Get all platform settings
+      responses:
+        "200":
+          description: Admin settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminSettings"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateAdminSettings
+      tags: [admin]
+      summary: Update platform settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateAdminSettingsBody"
+      responses:
+        "200":
+          description: Updated settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminSettings"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /admin/logo:
+    post:
+      operationId: uploadLogo
+      tags: [admin]
+      summary: Upload site logo (base64)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                imageData:
+                  type: string
+                imageType:
+                  type: string
+              required:
+                - imageData
+                - imageType
+      responses:
+        "200":
+          description: Logo uploaded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LogoUploadResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /admin/stats:
+    get:
+      operationId: getAdminStats
+      tags: [admin]
+      summary: Get platform-wide statistics
+      responses:
+        "200":
+          description: Admin stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminStats"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /admin/users:
+    get:
+      operationId: listAdminUsers
+      tags: [admin]
+      summary: List all users/sessions
+      responses:
+        "200":
+          description: Users list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminUser"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /admin/users/{sessionId}:
+    patch:
+      operationId: updateAdminUser
+      tags: [admin]
+      summary: Update user status (enable/disable/ban/unban)
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateAdminUserBody"
+      responses:
+        "200":
+          description: User updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminUser"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteAdminUser
+      tags: [admin]
+      summary: Delete a user account
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: User deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                required:
+                  - success
+                  - message
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    CreateAnalysisBody:
+      type: object
+      properties:
+        brandName:
+          type: string
+        websiteUrl:
+          type: string
+        instagramHandle:
+          type: ["string", "null"]
+        linkedinUrl:
+          type: ["string", "null"]
+        competitor1:
+          type: ["string", "null"]
+        competitor2:
+          type: ["string", "null"]
+        competitor3:
+          type: ["string", "null"]
+        industry:
+          type: string
+        email:
+          type: ["string", "null"]
+      required:
+        - brandName
+        - websiteUrl
+        - industry
+
+    Analysis:
+      type: object
+      properties:
+        id:
+          type: integer
+        brandName:
+          type: string
+        websiteUrl:
+          type: string
+        instagramHandle:
+          type: ["string", "null"]
+        linkedinUrl:
+          type: ["string", "null"]
+        competitor1:
+          type: ["string", "null"]
+        competitor2:
+          type: ["string", "null"]
+        competitor3:
+          type: ["string", "null"]
+        industry:
+          type: string
+        email:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [pending, analyzing, completed, failed]
+        overallScore:
+          type: ["number", "null"]
+        websiteScore:
+          type: ["number", "null"]
+        socialScore:
+          type: ["number", "null"]
+        contentScore:
+          type: ["number", "null"]
+        reviewsScore:
+          type: ["number", "null"]
+        competitorScore:
+          type: ["number", "null"]
+        adReadinessLevel:
+          type: ["string", "null"]
+          enum: [not_ready, getting_there, almost_ready, ready, null]
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required:
+        - id
+        - brandName
+        - websiteUrl
+        - industry
+        - status
+        - createdAt
+        - updatedAt
+
+    AnalysisResult:
+      type: object
+      properties:
+        analysis:
+          $ref: "#/components/schemas/Analysis"
+        insights:
+          type: array
+          items:
+            $ref: "#/components/schemas/Insight"
+        tasks:
+          type: array
+          items:
+            $ref: "#/components/schemas/ActionTask"
+      required:
+        - analysis
+        - insights
+        - tasks
+
+    Insight:
+      type: object
+      properties:
+        id:
+          type: integer
+        analysisId:
+          type: integer
+        category:
+          type: string
+          enum: [website, social_media, content, reviews, competitors, seo]
+        title:
+          type: string
+        description:
+          type: string
+        severity:
+          type: string
+          enum: [critical, warning, info, positive]
+        createdAt:
+          type: string
+      required:
+        - id
+        - analysisId
+        - category
+        - title
+        - description
+        - severity
+        - createdAt
+
+    ActionTask:
+      type: object
+      properties:
+        id:
+          type: integer
+        analysisId:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+        priority:
+          type: integer
+        category:
+          type: string
+          enum: [website, social_media, content, reviews, seo, competitors, branding]
+        estimatedDays:
+          type: integer
+        isCompleted:
+          type: boolean
+        completedAt:
+          type: ["string", "null"]
+        isDailyTask:
+          type: boolean
+        scheduledDate:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+      required:
+        - id
+        - analysisId
+        - title
+        - description
+        - priority
+        - category
+        - estimatedDays
+        - isCompleted
+        - isDailyTask
+        - createdAt
+
+    SubscriptionPlan:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        price:
+          type: number
+        currency:
+          type: string
+        currencySymbol:
+          type: string
+        interval:
+          type: string
+          enum: [monthly, yearly]
+        features:
+          type: array
+          items:
+            type: string
+        isPopular:
+          type: boolean
+      required:
+        - id
+        - name
+        - description
+        - price
+        - currency
+        - currencySymbol
+        - interval
+        - features
+        - isPopular
+
+    CurrencyInfo:
+      type: object
+      properties:
+        currency:
+          type: string
+        currencySymbol:
+          type: string
+        country:
+          type: string
+        countryCode:
+          type: string
+      required:
+        - currency
+        - currencySymbol
+        - country
+        - countryCode
+
+    InitiatePaymentBody:
+      type: object
+      properties:
+        planId:
+          type: string
+        email:
+          type: string
+        name:
+          type: string
+        currency:
+          type: string
+        redirectUrl:
+          type: string
+      required:
+        - planId
+        - email
+        - name
+        - currency
+        - redirectUrl
+
+    PaymentInitResponse:
+      type: object
+      properties:
+        paymentLink:
+          type: string
+        txRef:
+          type: string
+      required:
+        - paymentLink
+        - txRef
+
+    VerifyPaymentBody:
+      type: object
+      properties:
+        transactionId:
+          type: string
+        txRef:
+          type: string
+      required:
+        - transactionId
+        - txRef
+
+    PaymentVerifyResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        planId:
+          type: string
+        subscriptionId:
+          type: integer
+        message:
+          type: string
+      required:
+        - success
+        - message
+
+    DashboardSummary:
+      type: object
+      properties:
+        totalAnalyses:
+          type: integer
+        averageScore:
+          type: ["number", "null"]
+        completedTasks:
+          type: integer
+        pendingTasks:
+          type: integer
+        adReadyCount:
+          type: integer
+        notReadyCount:
+          type: integer
+        topInsightCategory:
+          type: ["string", "null"]
+      required:
+        - totalAnalyses
+        - completedTasks
+        - pendingTasks
+        - adReadyCount
+        - notReadyCount
+
+    UserProfile:
+      type: object
+      properties:
+        sessionId:
+          type: string
+        fullName:
+          type: ["string", "null"]
+        email:
+          type: ["string", "null"]
+        company:
+          type: ["string", "null"]
+        phone:
+          type: ["string", "null"]
+        country:
+          type: ["string", "null"]
+        timezone:
+          type: ["string", "null"]
+        avatarInitials:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required:
+        - sessionId
+        - createdAt
+        - updatedAt
+
+    UpdateUserProfileBody:
+      type: object
+      properties:
+        fullName:
+          type: ["string", "null"]
+        email:
+          type: ["string", "null"]
+        company:
+          type: ["string", "null"]
+        phone:
+          type: ["string", "null"]
+        country:
+          type: ["string", "null"]
+        timezone:
+          type: ["string", "null"]
+
+    BrandProfile:
+      type: object
+      properties:
+        id:
+          type: integer
+        sessionId:
+          type: string
+        brandName:
+          type: ["string", "null"]
+        websiteUrl:
+          type: ["string", "null"]
+        industry:
+          type: ["string", "null"]
+        instagramHandle:
+          type: ["string", "null"]
+        linkedinUrl:
+          type: ["string", "null"]
+        twitterHandle:
+          type: ["string", "null"]
+        facebookUrl:
+          type: ["string", "null"]
+        youtubeUrl:
+          type: ["string", "null"]
+        targetAudience:
+          type: ["string", "null"]
+        brandDescription:
+          type: ["string", "null"]
+        competitor1:
+          type: ["string", "null"]
+        competitor2:
+          type: ["string", "null"]
+        competitor3:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required:
+        - id
+        - sessionId
+        - createdAt
+        - updatedAt
+
+    UpdateBrandProfileBody:
+      type: object
+      properties:
+        brandName:
+          type: ["string", "null"]
+        websiteUrl:
+          type: ["string", "null"]
+        industry:
+          type: ["string", "null"]
+        instagramHandle:
+          type: ["string", "null"]
+        linkedinUrl:
+          type: ["string", "null"]
+        twitterHandle:
+          type: ["string", "null"]
+        facebookUrl:
+          type: ["string", "null"]
+        youtubeUrl:
+          type: ["string", "null"]
+        targetAudience:
+          type: ["string", "null"]
+        brandDescription:
+          type: ["string", "null"]
+        competitor1:
+          type: ["string", "null"]
+        competitor2:
+          type: ["string", "null"]
+        competitor3:
+          type: ["string", "null"]
+
+    SubscriptionStatus:
+      type: object
+      properties:
+        hasActiveSubscription:
+          type: boolean
+        subscription:
+          type: ["object", "null"]
+          properties:
+            id:
+              type: integer
+            planId:
+              type: string
+            currency:
+              type: string
+            status:
+              type: string
+            isActive:
+              type: boolean
+            expiresAt:
+              type: ["string", "null"]
+            createdAt:
+              type: string
+        paymentHistory:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              planId:
+                type: string
+              currency:
+                type: string
+              status:
+                type: string
+              createdAt:
+                type: string
+            required:
+              - id
+              - planId
+              - currency
+              - status
+              - createdAt
+      required:
+        - hasActiveSubscription
+        - paymentHistory
+
+    AdminSettings:
+      type: object
+      properties:
+        siteName:
+          type: string
+        siteTagline:
+          type: ["string", "null"]
+        logoUrl:
+          type: ["string", "null"]
+        faviconUrl:
+          type: ["string", "null"]
+        lightLogoUrl:
+          type: ["string", "null"]
+        brandColor:
+          type: ["string", "null"]
+        accentColor:
+          type: ["string", "null"]
+        typography:
+          type: ["string", "null"]
+        metaDescription:
+          type: ["string", "null"]
+        footerText:
+          type: ["string", "null"]
+        privacyUrl:
+          type: ["string", "null"]
+        termsUrl:
+          type: ["string", "null"]
+        supportEmail:
+          type: ["string", "null"]
+        serpApiKey:
+          type: ["string", "null"]
+        keywordDataApiKey:
+          type: ["string", "null"]
+        domainMetricsApiKey:
+          type: ["string", "null"]
+        serpApiFallbackKey:
+          type: ["string", "null"]
+        metaAppId:
+          type: ["string", "null"]
+        metaAppSecret:
+          type: ["string", "null"]
+        metaWebhookToken:
+          type: ["string", "null"]
+        metaRedirectUri:
+          type: ["string", "null"]
+        xApiKey:
+          type: ["string", "null"]
+        xApiSecret:
+          type: ["string", "null"]
+        xBearerToken:
+          type: ["string", "null"]
+        linkedinClientId:
+          type: ["string", "null"]
+        linkedinClientSecret:
+          type: ["string", "null"]
+        linkedinOauthToken:
+          type: ["string", "null"]
+        linkedinRedirectUri:
+          type: ["string", "null"]
+        googleCustomSearchApiKey:
+          type: ["string", "null"]
+        googleSearchEngineId:
+          type: ["string", "null"]
+        googlePlacesApiKey:
+          type: ["string", "null"]
+        trustpilotApiKey:
+          type: ["string", "null"]
+        flutterwavePublicKey:
+          type: ["string", "null"]
+        flutterwaveSecretKey:
+          type: ["string", "null"]
+        flutterwaveEncryptionKey:
+          type: ["string", "null"]
+        flutterwaveWebhookSecret:
+          type: ["string", "null"]
+        flutterwaveLiveMode:
+          type: ["boolean", "null"]
+        openaiApiKey:
+          type: ["string", "null"]
+        fxProviderApiKey:
+          type: ["string", "null"]
+        fxRateNGN:
+          type: ["string", "null"]
+        fxRateGHS:
+          type: ["string", "null"]
+        fxRateKES:
+          type: ["string", "null"]
+        fxRateZAR:
+          type: ["string", "null"]
+        fxRateGBP:
+          type: ["string", "null"]
+        fxRateEUR:
+          type: ["string", "null"]
+        maintenanceMode:
+          type: boolean
+        allowSignups:
+          type: boolean
+        emailVerificationRequired:
+          type: boolean
+        freeTrialEnabled:
+          type: boolean
+        referralProgramEnabled:
+          type: boolean
+        waitlistMode:
+          type: boolean
+        force2FA:
+          type: boolean
+        sessionTimeout:
+          type: ["integer", "null"]
+        ipWhitelist:
+          type: ["string", "null"]
+        recaptchaEnabled:
+          type: boolean
+        defaultCurrency:
+          type: string
+        smtpHost:
+          type: ["string", "null"]
+        smtpPort:
+          type: ["integer", "null"]
+        smtpUser:
+          type: ["string", "null"]
+        smtpPass:
+          type: ["string", "null"]
+        smtpFrom:
+          type: ["string", "null"]
+        weightWebsite:
+          type: ["integer", "null"]
+        weightSocial:
+          type: ["integer", "null"]
+        weightContent:
+          type: ["integer", "null"]
+        weightReviews:
+          type: ["integer", "null"]
+        weightCompetitor:
+          type: ["integer", "null"]
+        weightMessaging:
+          type: ["integer", "null"]
+        updatedAt:
+          type: string
+      required:
+        - siteName
+        - maintenanceMode
+        - allowSignups
+        - emailVerificationRequired
+        - freeTrialEnabled
+        - referralProgramEnabled
+        - waitlistMode
+        - force2FA
+        - recaptchaEnabled
+        - defaultCurrency
+        - updatedAt
+
+    UpdateAdminSettingsBody:
+      type: object
+      properties:
+        siteName:
+          type: ["string", "null"]
+        siteTagline:
+          type: ["string", "null"]
+        logoUrl:
+          type: ["string", "null"]
+        faviconUrl:
+          type: ["string", "null"]
+        lightLogoUrl:
+          type: ["string", "null"]
+        brandColor:
+          type: ["string", "null"]
+        accentColor:
+          type: ["string", "null"]
+        typography:
+          type: ["string", "null"]
+        metaDescription:
+          type: ["string", "null"]
+        footerText:
+          type: ["string", "null"]
+        privacyUrl:
+          type: ["string", "null"]
+        termsUrl:
+          type: ["string", "null"]
+        supportEmail:
+          type: ["string", "null"]
+        serpApiKey:
+          type: ["string", "null"]
+        keywordDataApiKey:
+          type: ["string", "null"]
+        domainMetricsApiKey:
+          type: ["string", "null"]
+        serpApiFallbackKey:
+          type: ["string", "null"]
+        metaAppId:
+          type: ["string", "null"]
+        metaAppSecret:
+          type: ["string", "null"]
+        metaWebhookToken:
+          type: ["string", "null"]
+        metaRedirectUri:
+          type: ["string", "null"]
+        xApiKey:
+          type: ["string", "null"]
+        xApiSecret:
+          type: ["string", "null"]
+        xBearerToken:
+          type: ["string", "null"]
+        linkedinClientId:
+          type: ["string", "null"]
+        linkedinClientSecret:
+          type: ["string", "null"]
+        linkedinOauthToken:
+          type: ["string", "null"]
+        linkedinRedirectUri:
+          type: ["string", "null"]
+        googleCustomSearchApiKey:
+          type: ["string", "null"]
+        googleSearchEngineId:
+          type: ["string", "null"]
+        googlePlacesApiKey:
+          type: ["string", "null"]
+        trustpilotApiKey:
+          type: ["string", "null"]
+        flutterwavePublicKey:
+          type: ["string", "null"]
+        flutterwaveSecretKey:
+          type: ["string", "null"]
+        flutterwaveEncryptionKey:
+          type: ["string", "null"]
+        flutterwaveWebhookSecret:
+          type: ["string", "null"]
+        flutterwaveLiveMode:
+          type: ["boolean", "null"]
+        openaiApiKey:
+          type: ["string", "null"]
+        fxProviderApiKey:
+          type: ["string", "null"]
+        fxRateNGN:
+          type: ["string", "null"]
+        fxRateGHS:
+          type: ["string", "null"]
+        fxRateKES:
+          type: ["string", "null"]
+        fxRateZAR:
+          type: ["string", "null"]
+        fxRateGBP:
+          type: ["string", "null"]
+        fxRateEUR:
+          type: ["string", "null"]
+        maintenanceMode:
+          type: ["boolean", "null"]
+        allowSignups:
+          type: ["boolean", "null"]
+        emailVerificationRequired:
+          type: ["boolean", "null"]
+        freeTrialEnabled:
+          type: ["boolean", "null"]
+        referralProgramEnabled:
+          type: ["boolean", "null"]
+        waitlistMode:
+          type: ["boolean", "null"]
+        force2FA:
+          type: ["boolean", "null"]
+        sessionTimeout:
+          type: ["integer", "null"]
+        ipWhitelist:
+          type: ["string", "null"]
+        recaptchaEnabled:
+          type: ["boolean", "null"]
+        defaultCurrency:
+          type: ["string", "null"]
+        smtpHost:
+          type: ["string", "null"]
+        smtpPort:
+          type: ["integer", "null"]
+        smtpUser:
+          type: ["string", "null"]
+        smtpPass:
+          type: ["string", "null"]
+        smtpFrom:
+          type: ["string", "null"]
+        weightWebsite:
+          type: ["integer", "null"]
+        weightSocial:
+          type: ["integer", "null"]
+        weightContent:
+          type: ["integer", "null"]
+        weightReviews:
+          type: ["integer", "null"]
+        weightCompetitor:
+          type: ["integer", "null"]
+        weightMessaging:
+          type: ["integer", "null"]
+
+    UpdateAdminUserBody:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [active, disabled, banned]
+      required:
+        - status
+
+    AdminStats:
+      type: object
+      properties:
+        totalUsers:
+          type: integer
+        totalAnalyses:
+          type: integer
+        totalSubscriptions:
+          type: integer
+        activeSubscriptions:
+          type: integer
+        mrr:
+          type: number
+        scansToday:
+          type: integer
+        totalRevenue:
+          type: number
+        analysesThisMonth:
+          type: integer
+        newUsersThisMonth:
+          type: integer
+        averageScore:
+          type: ["number", "null"]
+      required:
+        - totalUsers
+        - totalAnalyses
+        - totalSubscriptions
+        - activeSubscriptions
+        - mrr
+        - scansToday
+        - totalRevenue
+        - analysesThisMonth
+        - newUsersThisMonth
+
+    AdminUser:
+      type: object
+      properties:
+        sessionId:
+          type: string
+        fullName:
+          type: ["string", "null"]
+        email:
+          type: ["string", "null"]
+        company:
+          type: ["string", "null"]
+        country:
+          type: ["string", "null"]
+        analysisCount:
+          type: integer
+        hasActiveSubscription:
+          type: boolean
+        emailConfirmed:
+          type: boolean
+        status:
+          type: string
+          enum: [active, disabled, banned]
+        createdAt:
+          type: string
+      required:
+        - sessionId
+        - analysisCount
+        - hasActiveSubscription
+        - emailConfirmed
+        - status
+        - createdAt
+
+    LogoUploadResponse:
+      type: object
+      properties:
+        logoUrl:
+          type: string
+        message:
+          type: string
+      required:
+        - logoUrl
+        - message

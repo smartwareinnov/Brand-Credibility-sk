@@ -1,0 +1,218 @@
+You are a senior SaaS engineer and API integration expert.
+
+I already have an existing SaaS platform called “Authority Before Ads (ABA)” that analyzes:
+
+* Website authority
+* Brand mentions
+* Social proof
+* Content strength
+
+Now I want to ADD a new feature called:
+
+“Competitor Ads Intelligence”
+
+This must integrate seamlessly into the existing system without breaking current functionality.
+
+---
+
+FEATURE GOAL:
+
+Allow users to detect and view whether their competitors are running ads on:
+
+* Facebook & Instagram
+* Google Search Ads
+
+And display this data inside the user dashboard in a structured, user-friendly way.
+
+---
+
+API INTEGRATIONS:
+
+1. Facebook & Instagram Ads
+
+Use Meta Ads Library API.
+
+Requirements:
+
+* Fetch active ads for each competitor (by brand name or page)
+* Extract:
+
+  * Ad creatives (image/video URLs)
+  * Ad copy (text)
+  * CTA (if available)
+  * Start date
+  * Platform (Facebook / Instagram)
+
+Store results in database for caching (24–72 hours).
+
+---
+
+2. Google Ads Detection
+
+Use SerpApi
+
+Process:
+
+* Run search queries using:
+
+  * Competitor brand name
+  * Competitor + keywords
+* Detect sponsored results (ads)
+
+Extract:
+
+* Keyword triggering the ad
+* Ad headline
+* Description
+* Landing page URL
+* Ad position (top/bottom)
+
+Cache results to reduce API cost.
+
+---
+
+BACKEND LOGIC:
+
+1. When user submits competitors:
+
+* Trigger async job (queue system)
+
+2. For each competitor:
+
+* Fetch Meta Ads data
+* Fetch Google Ads detection data
+
+3. Normalize and structure data into:
+
+{
+competitor_name,
+meta_ads: [],
+google_ads: [],
+ads_activity_score
+}
+
+4. Store in database linked to user report.
+
+---
+
+ADS ACTIVITY SCORING (IMPORTANT):
+
+Create a simple scoring system:
+
+* No ads → Score 0
+* Few ads → Low activity
+* Multiple active ads → Medium activity
+* Consistent + long-running ads → High activity
+
+Use this to label:
+
+* “Not Running Ads”
+* “Testing Ads”
+* “Actively Running Ads”
+
+---
+
+DASHBOARD UI REQUIREMENTS:
+
+Add a new section:
+
+“Competitor Ads Intelligence”
+
+Structure:
+
+1. Summary Panel:
+
+* Show platforms detected (Meta / Google)
+* Activity level (Low / Medium / High)
+
+2. Meta Ads Section:
+
+* Grid layout (cards)
+* Each card shows:
+
+  * Creative (image/video)
+  * Ad copy
+  * CTA
+  * Start date
+
+3. Google Ads Section:
+
+* Table layout:
+
+  * Keyword
+  * Headline
+  * Description
+  * Landing page
+  * Position
+
+4. Insights Section (IMPORTANT):
+
+Generate insights such as:
+
+* “Competitor is actively running ads across Meta platforms”
+* “They are targeting commercial keywords on Google”
+* “You currently have no competing presence”
+
+---
+
+AI INTEGRATION:
+
+Use OpenAI API to generate:
+
+* Ad strategy insights
+* Competitive positioning analysis
+* Recommendations like:
+
+  * “Do not run ads yet”
+  * “Build content first”
+  * “Target similar keywords”
+
+---
+
+SYSTEM INTEGRATION:
+
+* Link ads data with existing ABA Score
+* Enhance final report with:
+
+  * “Your competitors are running ads but your authority score is low”
+
+---
+
+COST CONTROL:
+
+* Cache API responses (24–72 hours)
+* Limit deep ad analysis to paid users
+* Use background jobs (queue system)
+* Avoid repeated API calls for same competitor
+
+---
+
+ERROR HANDLING:
+
+* If no ads found → display “No active ads detected”
+* If API fails → show fallback message
+* Do not break dashboard rendering
+
+---
+
+OUTPUT REQUIREMENTS:
+
+1. Backend API endpoints for ads data
+2. Database schema update
+3. API integration flow
+4. UI component structure
+5. Step-by-step implementation plan
+
+---
+
+GOAL:
+
+Turn this feature into a powerful competitive intelligence tool that helps users understand:
+
+* Whether competitors are running ads
+* How aggressive they are
+* And whether the user should compete now or wait
+
+---
+
+Ensure the system is scalable, fast, and cost-efficient.

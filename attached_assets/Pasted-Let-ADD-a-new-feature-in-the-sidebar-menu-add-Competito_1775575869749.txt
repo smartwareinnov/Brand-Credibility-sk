@@ -1,0 +1,112 @@
+Let ADD a new feature, in the sidebar menu add 
+“Competitor Ads Intelligence”:
+On this page user will select from the list of competitors added, and then there should be drop down menu to choose if it is meta library they want to check or Google ads, the purpose of this is to detect and view whether this competitor is running ads on Facebook & Instagram and Google Search Ads.
+
+And display this data inside the user dashboard in a structured, user-friendly way. When result is scan, let them be able to  Store in database linked with competitor name. So they can go back to it.
+
+API INTEGRATIONS:
+1. Facebook & Instagram Ads
+Use Meta Ads Library API.
+Requirements:
+* Fetch active ads for each competitor (by brand name or page)
+* Extract:
+    * Ad creatives (image/video URLs)
+    * Ad copy (text)
+    * CTA (if available)
+    * Start date
+    * Platform (Facebook / Instagram)
+Store results in database for caching (24–72 hours).
+
+1. Google Ads Detection
+Use SerpApi
+Process:
+* Run search queries using:
+    * Competitor brand name
+    * Competitor + keywords
+* Detect sponsored results (ads)
+Extract:
+* Keyword triggering the ad
+* Ad headline
+* Description
+* Landing page URL
+* Ad position (top/bottom)
+Cache results to reduce API cost.
+
+
+ADS ACTIVITY SCORING (IMPORTANT):
+Create a simple scoring system:
+* No ads → Score 0
+* Few ads → Low activity
+* Multiple active ads → Medium activity
+* Consistent + long-running ads → High activity
+Use this to label:
+* “Not Running Ads”
+* “Testing Ads”
+* “Actively Running Ads”
+
+DASHBOARD UI REQUIREMENTS:
+Add a new section:
+“Competitor Ads Intelligence”
+Structure:
+1. Summary Panel:
+* Show platforms detected (Meta / Google)
+* Activity level (Low / Medium / High)
+1. Meta Ads Section:
+* Grid layout (cards)
+* Each card shows:
+    * Creative (image/video)
+    * Ad copy
+    * CTA
+    * Start date
+1. Google Ads Section:
+* Table layout:
+    * Keyword
+    * Headline
+    * Description
+    * Landing page
+    * Position
+1. Insights Section (IMPORTANT):
+Generate insights such as:
+* “Competitor is actively running ads across Meta platforms”
+* “They are targeting commercial keywords on Google”
+* “You currently have no competing presence”
+
+AI INTEGRATION:
+Use OpenAI API to generate:
+* Ad strategy insights
+* Competitive positioning analysis
+* Recommendations like:
+    * “Do not run ads yet”
+    * “Build content first”
+    * “Target similar keywords”
+
+SYSTEM INTEGRATION:
+* Link ads data with existing ABA Score
+* Enhance final report with:
+    * “Your competitors are running ads but your authority score is low”
+
+COST CONTROL:
+* Cache API responses (24–72 hours)
+* Limit deep ad analysis to paid users
+* Use background jobs (queue system)
+* Avoid repeated API calls for same competitor
+
+ERROR HANDLING:
+* If no ads found → display “No active ads detected”
+* If API fails → show fallback message
+* Do not break dashboard rendering
+
+OUTPUT REQUIREMENTS:
+1. Backend API endpoints for ads data
+2. Database schema update
+3. API integration flow
+4. UI component structure
+5. Step-by-step implementation plan
+
+GOAL:
+Turn this feature into a powerful competitive intelligence tool that helps users understand:
+* Whether competitors are running ads
+* How aggressive they are
+* And whether the user should compete now or wait
+
+Ensure the system is scalable, fast, and cost-efficient.

@@ -1,0 +1,27 @@
+
+🧠 Intelligence Features
+1. Ad Readiness Predictor Beyond just a score — a predictive model that says "At your current growth rate, you'll be ad-ready in 23 days." Gives founders a concrete deadline to work toward instead of an abstract number.
+2. Competitor Ad Intelligence (already discussed) Active ads across Meta, Google, LinkedIn, X. See what your competitors are spending on and model your own strategy around what's already working in your niche.
+3. Brand Sentiment Analysis When brand mentions are found online, don't just count them — analyze whether they're positive, negative, or neutral using NLP. A brand with 500 negative mentions is worse off than one with 50 positive ones. This changes the scoring meaningfully.
+4. Audience Trust Score Separate from the credibility score — measures how much the people already following you actually trust the brand. Derived from comment sentiment, reply rates, saves vs. likes ratio on social content.
+5. Viral Content Detector Scans your competitors' social profiles and identifies which of their posts got the highest engagement. Tells you what content format and topic is working in your niche right now — before you create a single piece.
+6. Share of Voice How often is your brand mentioned vs. your competitors in the same online conversations? A percentage that shows your slice of the conversation in your niche. Borrowed from enterprise PR tools — almost nobody offers this at the SMB level.
+
+📋 Action & Productivity Features
+7. AI Content Generator When the roadmap says "publish 4 SEO blog posts" — don't just tell them. Generate the outlines, titles, and first drafts right inside the platform. When it says "write a press release" — generate it. Remove the execution friction entirely.
+8. One-Click Press Release Builder User fills in 5 fields (what they built, who it's for, why it matters, a quote, contact info). Platform generates a publication-ready press release and a list of 20 relevant journalists and blogs to pitch it to, filtered by their industry and country.
+9. Review Request Templates When the roadmap says "collect 10 reviews" — provide ready-made WhatsApp message templates, email templates, and DM scripts that users can copy and send immediately. Tracked — platform knows when you've sent them.
+10. Weekly Credibility Digest Every Monday morning, users get an email showing their score change, what their competitors did last week, which new mentions appeared, and exactly what 3 actions to focus on that week. Makes the platform feel like a personal brand manager.
+11. Roadmap Collaboration Allow founders to invite a co-founder, VA, or marketing hire to their dashboard and assign roadmap tasks to them with deadlines. Turns a solo tool into a team tool — dramatically increases stickiness.
+
+🏆 Competitive Intelligence Features
+12. Industry Benchmark Database "Brands in your industry (African E-commerce) with a score above 65 see 3.4x higher ad ROI." Aggregate anonymized data from all platform users to build industry benchmarks. The more users you have, the more valuable this becomes. This is a genuine moat.
+13. Competitor Score Tracker Track your competitors' credibility scores over time — not just a snapshot. Show a 90-day trend line. Did their score jump last month? What did they do? This turns CredCheck into ongoing competitive intelligence, not a one-time audit.
+14. First-Mover Alerts Notify users when a competitor starts running ads for the first time, gets a new press feature, gains a significant follower spike, or launches a new content series. Real-time competitive monitoring.
+15. Keyword Gap Analysis Which keywords are your competitors ranking for that you're not? Powered by SEMRush data already integrated. Shows you exactly which search terms are sending traffic to competitors but not to you.
+
+
+🤖 AI-Powered Features
+16. AI Brand Coach (Chat Interface) A conversational AI inside the dashboard that knows your brand's score, your roadmap, your competitors, and your industry. Ask it: "What should I focus on this week?" or "Write me a LinkedIn post about my brand story" or "Why is my website score low?" — and get personalized, context-aware answers. This is your biggest differentiator.
+17. Auto-Roadmap Regeneration Every time a user completes a task or a new scan runs, the AI automatically reprioritizes the roadmap based on current data. The plan adapts as the brand grows instead of staying static.
+18. Competitor Strategy Decoder Feed a competitor's website, social profiles, and ad library into AI and get a plain-English breakdown of their marketing strategy — what they're emphasizing, who they're targeting, what their content pillars are. Saves hours of manual research.

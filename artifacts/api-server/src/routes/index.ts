@@ -1,0 +1,42 @@
+import { Router, type IRouter } from "express";
+import healthRouter from "./health";
+import analysesRouter from "./analyses";
+import tasksRouter from "./tasks";
+import subscriptionsRouter from "./subscriptions";
+import dashboardRouter from "./dashboard";
+import userRouter from "./user";
+import adminRouter from "./admin";
+import adminAuthRouter from "./adminAuth";
+import authRouter from "./auth";
+import competitorsRouter from "./competitors";
+import mentionsRouter from "./mentions";
+import notificationsRouter from "./notifications";
+import adsRouter from "./ads";
+import savedAnalysesRouter from "./saved-analyses";
+import usageRouter from "./usage";
+import aiCoachRouter from "./ai-coach";
+import contentRouter from "./content";
+import benchmarksRouter from "./benchmarks";
+
+const router: IRouter = Router();
+
+router.use(healthRouter);
+router.use(authRouter);
+router.use(adminAuthRouter);
+router.use(analysesRouter);
+router.use(tasksRouter);
+router.use(subscriptionsRouter);
+router.use(dashboardRouter);
+router.use(userRouter);
+router.use(adminRouter);
+router.use(competitorsRouter);
+router.use(mentionsRouter);
+router.use(notificationsRouter);
+router.use(adsRouter);
+router.use(savedAnalysesRouter);
+router.use(usageRouter);
+router.use(aiCoachRouter);
+router.use(contentRouter);
+router.use(benchmarksRouter);
+
+export default router;
