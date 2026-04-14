@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useSearch, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2, XCircle, Loader2, Zap } from "lucide-react";
-import { markAuthenticated, hasPlanSelected } from "@/hooks/useSession";
+import { markAuthenticated } from "@/hooks/useSession";
 
 const SESSION_KEY = "skorvia_session_id";
 const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -35,10 +35,8 @@ export default function ConfirmEmail() {
         setFullName(data.fullName ?? "");
         setStatus("success");
 
-        // Routing: new user → onboarding, onboarded but no plan → pricing, else → dashboard
-        const dest = !data.onboardingCompleted
-          ? "/onboarding"
-          : hasPlanSelected() ? "/dashboard" : "/pricing";
+        // Routing: new user → onboarding → pricing, already onboarded → dashboard
+        const dest = !data.onboardingCompleted ? "/onboarding" : "/dashboard";
         setTimeout(() => setLocation(dest), 2500);
       } catch (err: any) {
         setStatus("error");

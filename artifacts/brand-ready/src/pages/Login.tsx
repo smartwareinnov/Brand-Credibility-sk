@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Navbar } from "@/components/layout/Navbar";
 import { useToast } from "@/hooks/use-toast";
 import { Eye, EyeOff, Zap, ShieldCheck, ArrowLeft } from "lucide-react";
-import { markAuthenticated, markPlanSelected, hasPlanSelected } from "@/hooks/useSession";
+import { markAuthenticated } from "@/hooks/useSession";
 import { useRecaptcha } from "@/hooks/useRecaptcha";
 
 const SESSION_KEY = "skorvia_session_id";
@@ -73,28 +73,12 @@ export default function Login() {
 
       localStorage.setItem(SESSION_KEY, data.sessionId);
       markAuthenticated();
-      await syncSubscriptionStatus(data.email);
-      setLocation(hasPlanSelected() ? "/dashboard" : "/pricing");
+      setLocation("/dashboard");
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Login failed";
       toast({ title: "Login failed", description: msg, variant: "destructive" });
     } finally {
       setLoading(false);
-    }
-  };
-
-  const syncSubscriptionStatus = async (email: string) => {
-    if (!email) return;
-    try {
-      const subRes = await fetch(`${API_BASE}/api/user/subscription?email=${encodeURIComponent(email)}`);
-      if (subRes.ok) {
-        const subData = await subRes.json();
-        if (subData.hasActiveSubscription) {
-          markPlanSelected();
-        }
-      }
-    } catch {
-      // non-critical, ignore errors
     }
   };
 
@@ -120,8 +104,7 @@ export default function Login() {
       }
       localStorage.setItem(SESSION_KEY, data.sessionId);
       markAuthenticated();
-      await syncSubscriptionStatus(data.email);
-      setLocation(hasPlanSelected() ? "/dashboard" : "/pricing");
+      setLocation("/dashboard");
     } catch {
       setTotpError("Something went wrong. Please try again.");
     } finally {

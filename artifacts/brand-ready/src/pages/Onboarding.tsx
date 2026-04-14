@@ -12,7 +12,6 @@ import { useApi } from "@/lib/useApi";
 import { useGetUserProfile, getGetUserProfileQueryKey } from "@workspace/api-client-react";
 import { useSession } from "@/hooks/useSession";
 import { useToast } from "@/hooks/use-toast";
-import { hasPlanSelected } from "@/hooks/useSession";
 
 const ROLES = [
   { value: "founder_ceo", label: "Founder / CEO" },
@@ -123,8 +122,8 @@ export default function Onboarding() {
   useEffect(() => {
     if (profile) {
       if ((profile as any).onboardingCompleted) {
-        // Already onboarded — go to pricing if no plan, else dashboard
-        setLocation(hasPlanSelected() ? "/dashboard" : "/pricing");
+        // Already onboarded — go straight to dashboard
+        setLocation("/dashboard");
         return;
       }
       if ((profile as any).fullName) {

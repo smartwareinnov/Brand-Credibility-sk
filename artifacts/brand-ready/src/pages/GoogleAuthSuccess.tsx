@@ -3,10 +3,9 @@ import { useSearch, useLocation } from "wouter";
 import { Zap, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
-import { markAuthenticated, markPlanSelected, hasPlanSelected } from "@/hooks/useSession";
+import { markAuthenticated } from "@/hooks/useSession";
 
 const SESSION_KEY = "skorvia_session_id";
-const API_BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 export default function GoogleAuthSuccess() {
   const search = useSearch();
@@ -30,24 +29,7 @@ export default function GoogleAuthSuccess() {
       if (onboarding === "1") {
         setLocation("/onboarding");
       } else {
-        // Check if user has an active subscription before deciding where to redirect
-        fetch(`${API_BASE}/api/user/profile?sessionId=${encodeURIComponent(sessionId)}`)
-          .then((r) => r.ok ? r.json() : null)
-          .then(async (profile) => {
-            if (profile?.email) {
-              const subRes = await fetch(`${API_BASE}/api/user/subscription?email=${encodeURIComponent(profile.email)}`);
-              if (subRes.ok) {
-                const subData = await subRes.json();
-                if (subData.hasActiveSubscription) {
-                  markPlanSelected();
-                }
-              }
-            }
-          })
-          .catch(() => {})
-          .finally(() => {
-            setLocation(hasPlanSelected() ? "/dashboard" : "/pricing");
-          });
+        setLocation("/dashboard");
       }
     } else {
       setError("No session received. Please try again.");

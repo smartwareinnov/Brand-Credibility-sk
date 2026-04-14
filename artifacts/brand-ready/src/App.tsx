@@ -3,7 +3,7 @@ import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { isAuthenticated, hasPlanSelected } from "@/hooks/useSession";
+import { isAuthenticated } from "@/hooks/useSession";
 import { useAppConfig } from "@/hooks/useAppConfig";
 
 import NotFound from "@/pages/not-found";
@@ -105,7 +105,6 @@ function PricingRedirect() {
 
 function PrivateRoute({ component: Component }: { component: React.ComponentType }) {
   if (!isAuthenticated()) return <LoginRedirect />;
-  if (!hasPlanSelected()) return <PricingRedirect />;
   return <Component />;
 }
 
