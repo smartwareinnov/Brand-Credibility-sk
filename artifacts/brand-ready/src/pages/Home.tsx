@@ -17,7 +17,7 @@ const SESSION_KEY = "skorvia_session_id";
 /* ─── FAQ data ─────────────────────────────────────────────────────────────── */
 const faqs = [
   {
-    q: "How does BrandReady calculate my Ad Readiness Score?",
+    q: "How does Skorvia calculate my Ad Readiness Score?",
     a: "We scan 8 data sources — your website, social profiles, review platforms, SEO signals, brand mentions, and competitor benchmarks — then weight each dimension to produce a 0–100 score. The higher your score, the more likely your ads will convert profitably.",
   },
   {
@@ -92,7 +92,7 @@ export default function Home() {
             <div className="text-center max-w-4xl mx-auto">
               <Badge variant="secondary" className="mb-6 gap-1.5 px-3 py-1 text-xs font-semibold">
                 <Zap className="w-3 h-3 text-primary" />
-                BrandReady 2.0 — Now Live
+                Skorvia 2.0 — Now Live
               </Badge>
 
               <h1 className="text-5xl sm:text-6xl md:text-7xl font-extrabold tracking-tight mb-6 leading-[1.06] text-balance">
@@ -132,7 +132,7 @@ export default function Home() {
               <div className="relative rounded-2xl border shadow-2xl overflow-hidden bg-card">
                 <img
                   src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=1200&q=80&auto=format&fit=crop"
-                  alt="BrandReady analytics dashboard"
+                  alt="Skorvia analytics dashboard"
                   className="w-full object-cover object-top"
                   style={{ maxHeight: 480 }}
                 />
@@ -228,7 +228,7 @@ export default function Home() {
                 Everything you need to build a brand that converts
               </h2>
               <p className="text-muted-foreground text-lg">
-                Stop guessing why your ads aren't working. BrandReady gives you the full picture.
+                Stop guessing why your ads aren't working. Skorvia gives you the full picture.
               </p>
             </div>
 
@@ -349,7 +349,7 @@ export default function Home() {
                   See exactly where rivals are beating you
                 </h2>
                 <p className="text-muted-foreground leading-relaxed mb-6">
-                  BrandReady pulls live data on up to 3 competitors and overlays their trust signals against yours. Spot the gaps, prioritize the fixes, and close the distance — before you spend a dollar on ads.
+                  Skorvia pulls live data on up to 3 competitors and overlays their trust signals against yours. Spot the gaps, prioritize the fixes, and close the distance — before you spend a dollar on ads.
                 </p>
                 <ul className="space-y-3">
                   {[
@@ -425,7 +425,7 @@ export default function Home() {
             <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
               {[
                 {
-                  quote: "BrandReady caught that our checkout flow was killing trust before we burned our $10k ad budget. Fixing it doubled our conversion rate.",
+                  quote: "Skorvia caught that our checkout flow was killing trust before we burned our $10k ad budget. Fixing it doubled our conversion rate.",
                   author: "Sarah J.",
                   role: "Founder, Bloom & Co",
                   avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=80&q=80&auto=format&fit=crop&crop=face",
@@ -495,7 +495,7 @@ export default function Home() {
         <section className="py-20 bg-muted/20">
           <div className="container mx-auto px-4 max-w-5xl">
             <div className="text-center mb-12">
-              <Badge variant="secondary" className="mb-4">Why BrandReady</Badge>
+              <Badge variant="secondary" className="mb-4">Why Skorvia</Badge>
               <h2 className="text-3xl font-bold tracking-tight">Built for brands that take growth seriously</h2>
             </div>
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">

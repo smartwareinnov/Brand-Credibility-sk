@@ -316,7 +316,7 @@ export default function AudienceTrustScore() {
               <CardContent className="p-4 flex items-start gap-2.5">
                 <Info className="h-4 w-4 text-blue-600 flex-shrink-0 mt-0.5" />
                 <p className="text-xs text-blue-800 leading-relaxed">
-                  <strong>How this score is calculated:</strong> Your Trust Score combines your BrandReady analysis data (overall, website, and social scores), brand mention sentiment from tracked sources, and any social engagement stats you enter above. The more data you provide, the more accurate your score will be.
+                  <strong>How this score is calculated:</strong> Your Trust Score combines your Skorvia analysis data (overall, website, and social scores), brand mention sentiment from tracked sources, and any social engagement stats you enter above. The more data you provide, the more accurate your score will be.
                 </p>
               </CardContent>
             </Card>

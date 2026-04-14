@@ -354,7 +354,7 @@ export default function BrandMentions() {
                 </div>
                 <h3 className="font-semibold text-base mb-2">No mentions yet</h3>
                 <p className="text-sm text-muted-foreground max-w-xs mx-auto mb-4">
-                  Once BrandReady starts tracking your brand across the web, mentions will appear here. Add keywords below and hit Refresh to start.
+                  Once Skorvia starts tracking your brand across the web, mentions will appear here. Add keywords below and hit Refresh to start.
                 </p>
                 <Button variant="outline" size="sm" className="gap-1.5" onClick={() => refreshMutation.mutate()} disabled={refreshMutation.isPending}>
                   <RefreshCw className={`h-3.5 w-3.5 ${refreshMutation.isPending ? "animate-spin" : ""}`} />
@@ -418,7 +418,7 @@ export default function BrandMentions() {
               <Search className="h-4 w-4" /> Tracked Keywords
             </CardTitle>
             <CardDescription>
-              BrandReady scans the web for mentions of these keywords
+              Skorvia scans the web for mentions of these keywords
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">

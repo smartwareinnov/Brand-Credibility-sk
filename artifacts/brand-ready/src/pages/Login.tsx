@@ -185,7 +185,7 @@ export default function Login() {
               <Zap className="h-7 w-7 text-primary" />
             </div>
             <h1 className="text-2xl font-bold tracking-tight">Welcome back</h1>
-            <p className="text-muted-foreground mt-2">Log in to your BrandReady account</p>
+            <p className="text-muted-foreground mt-2">Log in to your Skorvia account</p>
           </div>
 
           <div className="bg-card border rounded-2xl shadow-sm p-6 sm:p-8">

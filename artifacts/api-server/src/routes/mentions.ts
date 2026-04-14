@@ -1,144 +1,20 @@
 import { Router, type IRouter } from "express";
 import { eq, desc } from "drizzle-orm";
-import { db, brandMentionsTable, mentionSettingsTable, brandProfilesTable } from "@workspace/db";
+import { db, brandMentionsTable, mentionSettingsTable } from "@workspace/db";
 import { getSessionId } from "../middlewares/auth";
 import { chatCompletion } from "../lib/openai";
 
 const router: IRouter = Router();
 
-type Platform = "web" | "twitter" | "linkedin" | "facebook" | "news";
-type Sentiment = "positive" | "neutral" | "negative";
-
-interface GeneratedMention {
-  platform: Platform;
-  source: string;
-  title: string;
-  snippet: string;
-  url: string;
-  mentionDate: string;
-  sentiment: Sentiment;
-}
-
-function seededRand(seed: number, index: number): number {
-  const x = Math.sin(seed * 9301 + index * 49297 + 233723) * 100000;
-  return x - Math.floor(x);
-}
-
-function generateMentions(brandName: string, count = 8): GeneratedMention[] {
-  const seed = brandName.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
-  const platforms: Platform[] = ["web", "twitter", "linkedin", "facebook", "news"];
-  const sentiments: Sentiment[] = ["positive", "positive", "positive", "neutral", "neutral", "negative"];
-
-  const positiveTemplates = [
-    {
-      title: `Top founder tools we're watching in 2026`,
-      snippet: `${brandName} has been making waves this year, helping founders benchmark their brands before scaling their ad spend.`,
-      source: "TechCrunch Africa",
-      platform: "web" as Platform,
-    },
-    {
-      title: `Why I delayed my ad campaign by 30 days`,
-      snippet: `After running a ${brandName} analysis, I realised my brand wasn't ready for paid traffic. Here's what I changed.`,
-      source: "LinkedIn",
-      platform: "linkedin" as Platform,
-    },
-    {
-      title: `Tweet — brand readiness check`,
-      snippet: `Just used ${brandName} to check my brand score before launching Facebook ads. Got a 72 — honestly eye-opening 🔥`,
-      source: "@founderbuilds",
-      platform: "twitter" as Platform,
-    },
-    {
-      title: `${brandName} named among must-try SaaS tools`,
-      snippet: `The platform's Ad Readiness Score gives founders a clear picture of brand credibility before they commit ad budget.`,
-      source: "Business Day NG",
-      platform: "news" as Platform,
-    },
-    {
-      title: `Founder community shoutout`,
-      snippet: `Highly recommend ${brandName} if you're serious about knowing your brand's ad readiness score before running campaigns.`,
-      source: "African Startup Hub",
-      platform: "facebook" as Platform,
-    },
-  ];
-
-  const neutralTemplates = [
-    {
-      title: `Are startups rushing into paid ads too early?`,
-      snippet: `Experts say tools like ${brandName}, while useful, are just one part of the puzzle when it comes to ad readiness.`,
-      source: "Nairametrics",
-      platform: "web" as Platform,
-    },
-    {
-      title: `New tools for African founders`,
-      snippet: `${brandName} is among several platforms helping entrepreneurs evaluate their brand health before scaling.`,
-      source: "Disrupt Africa",
-      platform: "news" as Platform,
-    },
-  ];
-
-  const negativeTemplates = [
-    {
-      title: `Feedback on ${brandName}`,
-      snippet: `Tried ${brandName} — the insights are good but I wish the competitor analysis was more detailed for local brands.`,
-      source: "@digitalnaijapreneur",
-      platform: "twitter" as Platform,
-    },
-  ];
-
-  const all = [...positiveTemplates, ...neutralTemplates, ...negativeTemplates];
-  const results: GeneratedMention[] = [];
-
-  for (let i = 0; i < Math.min(count, all.length); i++) {
-    const template = all[i];
-    const daysAgo = Math.floor(seededRand(seed, i) * 14);
-    const date = new Date();
-    date.setDate(date.getDate() - daysAgo);
-    const sentiment: Sentiment =
-      i < positiveTemplates.length ? "positive"
-      : i < positiveTemplates.length + neutralTemplates.length ? "neutral"
-      : "negative";
-
-    results.push({
-      platform: template.platform,
-      source: template.source,
-      title: template.title,
-      snippet: template.snippet,
-      url: "#",
-      mentionDate: date.toISOString().split("T")[0],
-      sentiment,
-    });
-  }
-
-  return results;
-}
-
 router.get("/user/mentions", async (req, res): Promise<void> => {
   const sessionId = getSessionId(req);
   if (!sessionId) { res.status(401).json({ error: "Authentication required" }); return; }
 
-  let mentions = await db
+  const mentions = await db
     .select()
     .from(brandMentionsTable)
     .where(eq(brandMentionsTable.sessionId, sessionId))
     .orderBy(desc(brandMentionsTable.createdAt));
-
-  if (mentions.length === 0) {
-    const [brand] = await db
-      .select()
-      .from(brandProfilesTable)
-      .where(eq(brandProfilesTable.sessionId, sessionId));
-
-    const brandName = brand?.brandName ?? "Your Brand";
-    const generated = generateMentions(brandName);
-
-    if (generated.length > 0) {
-      mentions = await db
-        .insert(brandMentionsTable)
-        .values(generated.map((m) => ({ ...m, sessionId })))
-        .returning();
-    }
-  }
 
   const settings = await db
     .select()
@@ -155,27 +31,13 @@ router.post("/user/mentions/refresh", async (req, res): Promise<void> => {
   const sessionId = getSessionId(req);
   if (!sessionId) { res.status(401).json({ error: "Authentication required" }); return; }
 
-  const [brand] = await db
-    .select()
-    .from(brandProfilesTable)
-    .where(eq(brandProfilesTable.sessionId, sessionId));
-
-  const brandName = brand?.brandName ?? "Your Brand";
-  const generated = generateMentions(brandName, 3);
-
-  if (generated.length > 0) {
-    await db
-      .insert(brandMentionsTable)
-      .values(generated.map((m) => ({ ...m, sessionId })));
-  }
-
   const mentions = await db
     .select()
     .from(brandMentionsTable)
     .where(eq(brandMentionsTable.sessionId, sessionId))
     .orderBy(desc(brandMentionsTable.createdAt));
 
-  res.json({ mentions, refreshed: generated.length });
+  res.json({ mentions, refreshed: 0 });
 });
 
 router.put("/user/mentions/settings", async (req, res): Promise<void> => {

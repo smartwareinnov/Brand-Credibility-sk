@@ -85,7 +85,7 @@ export default function AdminResetPassword() {
             <Shield className="h-8 w-8 text-primary-foreground" />
           </div>
           <h1 className="text-2xl font-bold text-white tracking-tight">Admin Panel</h1>
-          <p className="text-slate-400 text-sm mt-1">BrandReady — Password Reset</p>
+          <p className="text-slate-400 text-sm mt-1">Skorvia — Password Reset</p>
         </div>
 
         <div className="bg-white rounded-2xl shadow-2xl p-8">

@@ -105,7 +105,7 @@ export default function PressReleaseBuilder() {
                 <div>
                   <Label className="text-xs font-semibold mb-1.5 block">Quote (optional)</Label>
                   <Textarea
-                    placeholder={`e.g. "We built BrandReady because we've seen too many founders burn cash on ads before their brand was ready." — Founder Name, CEO`}
+                    placeholder={`e.g. "We built Skorvia because we've seen too many founders burn cash on ads before their brand was ready." — Founder Name, CEO`}
                     value={form.quote}
                     onChange={e => set("quote", e.target.value)}
                     rows={2}

@@ -169,7 +169,7 @@ export default function AdminLogin() {
             <Shield className="h-8 w-8 text-primary-foreground" />
           </div>
           <h1 className="text-2xl font-bold text-white tracking-tight">Admin Panel</h1>
-          <p className="text-slate-400 text-sm mt-1">BrandReady — Secure Access</p>
+          <p className="text-slate-400 text-sm mt-1">Skorvia — Secure Access</p>
         </div>
 
         <div className="bg-white rounded-2xl shadow-2xl p-8">
@@ -260,7 +260,7 @@ export default function AdminLogin() {
           <div className="mt-6 pt-5 border-t text-center">
             <Link href="/">
               <span className="text-xs text-slate-500 hover:text-slate-700 cursor-pointer transition-colors">
-                ← Back to BrandReady
+                ← Back to Skorvia
               </span>
             </Link>
           </div>

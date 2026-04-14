@@ -109,7 +109,7 @@ export default function Features() {
               Everything you need to build a brand that converts
             </h1>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-10">
-              BrandReady combines 8 data sources and AI analysis into one clear score and action plan — so you know exactly what to fix before spending on ads.
+              Skorvia combines 8 data sources and AI analysis into one clear score and action plan — so you know exactly what to fix before spending on ads.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link href="/register">
