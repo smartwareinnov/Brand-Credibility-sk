@@ -19,4 +19,5 @@ export * from "./platform_plans";
 export * from "./coupons";
 export * from "./competitor_score_snapshots";
 export * from "./ai_chat_messages";
+export * from "./ai_conversations";
 export * from "./waitlist_signups";

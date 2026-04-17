@@ -185,7 +185,18 @@ export default function BrandMentions() {
 
   useEffect(() => {
     if (serverSettings) {
-      setAlerts(serverSettings);
+      // Map DB field names to frontend field names
+      const mapped: ApiMentionSettings = {
+        mentionAlerts: serverSettings.mentionAlerts ?? true,
+        alertFrequency: serverSettings.alertFrequency ?? "realtime",
+        positiveMentions: serverSettings.positiveMentions ?? true,
+        negativeMentions: serverSettings.negativeMentions ?? true,
+        neutralMentions: serverSettings.neutralMentions ?? false,
+        trackedKeywords: Array.isArray(serverSettings.trackedKeywords)
+          ? serverSettings.trackedKeywords
+          : [],
+      };
+      setAlerts(mapped);
     }
   }, [serverSettings]);
 

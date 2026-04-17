@@ -6,6 +6,23 @@ import { chatCompletion } from "../lib/openai";
 
 const router: IRouter = Router();
 
+function normalizeSettings(raw: Record<string, unknown> | null | undefined) {
+  if (!raw) return null;
+  let keywords: string[] = [];
+  try {
+    const parsed = typeof raw.keywords === "string" ? JSON.parse(raw.keywords) : raw.keywords;
+    keywords = Array.isArray(parsed) ? parsed : [];
+  } catch { keywords = []; }
+  return {
+    mentionAlerts: raw.mentionAlertsEnabled ?? true,
+    alertFrequency: raw.alertFrequency ?? "realtime",
+    positiveMentions: raw.positiveMentions ?? true,
+    negativeMentions: raw.negativeMentions ?? true,
+    neutralMentions: raw.neutralMentions ?? false,
+    trackedKeywords: keywords,
+  };
+}
+
 router.get("/user/mentions", async (req, res): Promise<void> => {
   const sessionId = getSessionId(req);
   if (!sessionId) { res.status(401).json({ error: "Authentication required" }); return; }
@@ -16,14 +33,14 @@ router.get("/user/mentions", async (req, res): Promise<void> => {
     .where(eq(brandMentionsTable.sessionId, sessionId))
     .orderBy(desc(brandMentionsTable.createdAt));
 
-  const settings = await db
+  const settingsRows = await db
     .select()
     .from(mentionSettingsTable)
     .where(eq(mentionSettingsTable.sessionId, sessionId));
 
   res.json({
     mentions,
-    settings: settings[0] ?? null,
+    settings: normalizeSettings(settingsRows[0] as Record<string, unknown> | undefined),
   });
 });
 
@@ -44,48 +61,42 @@ router.put("/user/mentions/settings", async (req, res): Promise<void> => {
   const sessionId = getSessionId(req);
   if (!sessionId) { res.status(401).json({ error: "Authentication required" }); return; }
 
-  const {
-    keywords,
-    alertFrequency,
-    mentionAlertsEnabled,
-    positiveMentions,
-    negativeMentions,
-    neutralMentions,
-  } = req.body ?? {};
+  const body = req.body ?? {};
+  // Accept both frontend names (mentionAlerts, trackedKeywords) and DB names
+  const mentionAlertsEnabled = body.mentionAlerts ?? body.mentionAlertsEnabled;
+  const keywords = body.trackedKeywords ?? body.keywords;
+  const { alertFrequency, positiveMentions, negativeMentions, neutralMentions } = body;
 
   const existing = await db
     .select()
     .from(mentionSettingsTable)
     .where(eq(mentionSettingsTable.sessionId, sessionId));
 
-  const updateData = {
-    keywords: Array.isArray(keywords) ? JSON.stringify(keywords) : undefined,
-    alertFrequency: typeof alertFrequency === "string" ? alertFrequency : undefined,
-    mentionAlertsEnabled: typeof mentionAlertsEnabled === "boolean" ? mentionAlertsEnabled : undefined,
-    positiveMentions: typeof positiveMentions === "boolean" ? positiveMentions : undefined,
-    negativeMentions: typeof negativeMentions === "boolean" ? negativeMentions : undefined,
-    neutralMentions: typeof neutralMentions === "boolean" ? neutralMentions : undefined,
-  };
+  const updateData: Record<string, unknown> = {};
+  if (Array.isArray(keywords)) updateData.keywords = JSON.stringify(keywords);
+  if (typeof alertFrequency === "string") updateData.alertFrequency = alertFrequency;
+  if (typeof mentionAlertsEnabled === "boolean") updateData.mentionAlertsEnabled = mentionAlertsEnabled;
+  if (typeof positiveMentions === "boolean") updateData.positiveMentions = positiveMentions;
+  if (typeof negativeMentions === "boolean") updateData.negativeMentions = negativeMentions;
+  if (typeof neutralMentions === "boolean") updateData.neutralMentions = neutralMentions;
 
-  const cleanUpdate = Object.fromEntries(Object.entries(updateData).filter(([, v]) => v !== undefined));
-
-  let settings;
+  let raw;
   if (existing.length === 0) {
     const [inserted] = await db
       .insert(mentionSettingsTable)
-      .values({ sessionId, ...cleanUpdate })
+      .values({ sessionId, ...updateData })
       .returning();
-    settings = inserted;
+    raw = inserted;
   } else {
     const [updated] = await db
       .update(mentionSettingsTable)
-      .set(cleanUpdate)
+      .set(updateData)
       .where(eq(mentionSettingsTable.sessionId, sessionId))
       .returning();
-    settings = updated;
+    raw = updated;
   }
 
-  res.json(settings);
+  res.json(normalizeSettings(raw as Record<string, unknown>));
 });
 
 router.get("/user/mentions/sentiment-summary", async (req, res): Promise<void> => {
