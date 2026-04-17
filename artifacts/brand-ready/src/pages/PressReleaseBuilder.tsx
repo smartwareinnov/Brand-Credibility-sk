@@ -12,6 +12,8 @@ import { useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Newspaper, Sparkles, Copy, Check, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useBrandSelector } from "@/hooks/useBrandSelector";
+import { BrandSelector } from "@/components/ui/BrandSelector";
 
 const COUNTRIES = [
   "Nigeria", "Kenya", "Ghana", "South Africa", "United States", "United Kingdom",
@@ -35,6 +37,7 @@ function CopyButton({ text }: { text: string }) {
 export default function PressReleaseBuilder() {
   const { apiFetch } = useApi();
   const { toast } = useToast();
+  const { brands, selectedBrandId, setSelectedBrandId, hasMultipleBrands } = useBrandSelector();
   const [form, setForm] = useState({ what: "", who: "", why: "", quote: "", contact: "", country: "Global" });
   const [result, setResult] = useState<{ content: string; brandName: string } | null>(null);
 
@@ -43,7 +46,7 @@ export default function PressReleaseBuilder() {
   const generateMutation = useMutation({
     mutationFn: () => apiFetch<{ content: string; brandName: string }>("/ai/press-release", {
       method: "POST",
-      body: JSON.stringify(form),
+      body: JSON.stringify({ ...form, brandId: selectedBrandId }),
     }),
     onSuccess: (data) => { setResult(data); toast({ title: "Press release generated!" }); },
     onError: (err) => { toast({ variant: "destructive", title: "Generation failed", description: String(err) }); },
@@ -61,6 +64,12 @@ export default function PressReleaseBuilder() {
           </h1>
           <p className="text-sm text-muted-foreground mt-1">Fill in 5 fields and get a publication-ready press release + 15 journalist targets</p>
         </div>
+
+        {hasMultipleBrands && (
+          <div className="mb-5">
+            <BrandSelector brands={brands} selectedBrandId={selectedBrandId} onSelect={(id) => { setSelectedBrandId(id); setResult(null); }} />
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
           <div className="lg:col-span-2 space-y-4">

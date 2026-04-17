@@ -10,6 +10,7 @@ import {
   BarChart3, CheckSquare, Bell, CalendarDays, Plus, ArrowRight,
   Zap, Globe, Instagram, Linkedin, Star,
   TrendingUp, CheckCircle2, Loader2, Tag, XCircle, ArrowLeft, Sparkles,
+  Clock, Target, Rocket,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -401,8 +402,130 @@ function UpgradeModal({ isOpen, onClose, profile, sessionId }: {
 }
 
 
-type ShareOfVoiceData = {
-  brandName: string;
+type PredictionData = {
+  daysEstimate: number;
+  reasoning: string;
+  topPriorities: string[];
+  currentScore: number;
+  targetScore: number;
+  message?: string;
+};
+
+function AdReadinessPredictor({ analysisId, currentScore, apiFetch }: {
+  analysisId: number;
+  currentScore: number;
+  apiFetch: <T>(path: string, opts?: RequestInit) => Promise<T>;
+}) {
+  const [prediction, setPrediction] = useState<PredictionData | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [fetched, setFetched] = useState(false);
+
+  const fetchPrediction = async () => {
+    setLoading(true);
+    try {
+      const data = await apiFetch<PredictionData>(`/analyses/${analysisId}/predict-readiness`, { method: "POST" });
+      setPrediction(data);
+    } catch { /* silently fail */ } finally {
+      setLoading(false);
+      setFetched(true);
+    }
+  };
+
+  if (!fetched && !loading) {
+    return (
+      <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-blue-500/5">
+        <CardContent className="p-5 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+              <Rocket className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <p className="font-semibold text-sm">Ad Readiness Predictor</p>
+              <p className="text-xs text-muted-foreground">Find out exactly how many days until you're ad-ready</p>
+            </div>
+          </div>
+          <Button size="sm" onClick={fetchPrediction} className="gap-1.5 flex-shrink-0">
+            <Sparkles className="h-3.5 w-3.5" /> Predict
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (loading) {
+    return (
+      <Card className="border-primary/20">
+        <CardContent className="p-5 flex items-center gap-3">
+          <Loader2 className="h-5 w-5 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">Calculating your readiness timeline...</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!prediction) return null;
+
+  const isReady = prediction.daysEstimate === 0;
+  const gapPct = Math.min(100, Math.round((currentScore / prediction.targetScore) * 100));
+
+  return (
+    <Card className={cn("border-2", isReady ? "border-green-400 bg-green-50/30" : "border-primary/20 bg-gradient-to-r from-primary/5 to-blue-500/5")}>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base flex items-center gap-2">
+          <Rocket className={cn("h-4 w-4", isReady ? "text-green-600" : "text-primary")} />
+          Ad Readiness Predictor
+          {isReady && <Badge className="bg-green-100 text-green-700 border-green-200 ml-auto">🎉 Ad-Ready Now!</Badge>}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {isReady ? (
+          <p className="text-sm text-green-700 font-medium">{prediction.message}</p>
+        ) : (
+          <>
+            <div className="flex items-center gap-4">
+              <div className="text-center flex-shrink-0">
+                <p className="text-4xl font-extrabold text-primary tabular-nums">{prediction.daysEstimate}</p>
+                <p className="text-xs text-muted-foreground font-medium">days to go</p>
+              </div>
+              <div className="flex-1 space-y-2">
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>Current: {prediction.currentScore}</span>
+                  <span>Target: {prediction.targetScore}+</span>
+                </div>
+                <div className="h-2.5 bg-muted rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-primary rounded-full transition-all duration-700"
+                    style={{ width: `${gapPct}%` }}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed">{prediction.reasoning}</p>
+              </div>
+            </div>
+
+            {prediction.topPriorities?.length > 0 && (
+              <div className="space-y-1.5">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                  <Target className="h-3.5 w-3.5" /> Top priorities to accelerate
+                </p>
+                {prediction.topPriorities.map((p, i) => (
+                  <div key={i} className="flex items-start gap-2 text-xs">
+                    <span className="w-4 h-4 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold flex-shrink-0 mt-px text-[10px]">{i + 1}</span>
+                    <span className="text-muted-foreground leading-relaxed">{p}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+        <Button variant="ghost" size="sm" className="text-xs gap-1 -mt-1" onClick={fetchPrediction}>
+          <Clock className="h-3 w-3" /> Recalculate
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+type ShareOfVoiceData = {  brandName: string;
   brandSharePercent: number;
   competitors: { name: string; mentions: number; sharePercent: number }[];
   totalMentions: number;
@@ -659,6 +782,11 @@ export default function Dashboard() {
 
         {/* Share of Voice Widget */}
         <ShareOfVoiceWidget apiFetch={apiFetch} />
+
+        {/* Ad Readiness Predictor */}
+        {latestAnalysis && latestAnalysis.status === "completed" && (
+          <AdReadinessPredictor analysisId={latestAnalysis.id} currentScore={latestAnalysis.overallScore ?? 0} apiFetch={apiFetch} />
+        )}
 
         {/* Two-column: Roadmap + Daily Plan */}
         <div className="grid lg:grid-cols-2 gap-6">

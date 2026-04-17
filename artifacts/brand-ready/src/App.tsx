@@ -63,6 +63,7 @@ import CompetitorScoreTracker from "@/pages/CompetitorScoreTracker";
 import CompetitorStrategyDecoder from "@/pages/CompetitorStrategyDecoder";
 import AudienceTrustScore from "@/pages/AudienceTrustScore";
 import ViralContentDetector from "@/pages/ViralContentDetector";
+import ShareOfVoice from "@/pages/ShareOfVoice";
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
   state = { error: null };
@@ -196,6 +197,7 @@ function Router() {
       <Route path="/strategy-decoder">{() => <PrivateRoute component={CompetitorStrategyDecoder} />}</Route>
       <Route path="/trust-score">{() => <PrivateRoute component={AudienceTrustScore} />}</Route>
       <Route path="/viral-detector">{() => <PrivateRoute component={ViralContentDetector} />}</Route>
+      <Route path="/share-of-voice">{() => <PrivateRoute component={ShareOfVoice} />}</Route>
 
       <Route component={NotFound} />
     </Switch>

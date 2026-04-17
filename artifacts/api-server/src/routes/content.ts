@@ -1,12 +1,40 @@
 import { Router, type IRouter } from "express";
 import { eq, desc } from "drizzle-orm";
-import { db, brandProfilesTable, analysesTable, platformSettingsTable, brandMentionsTable } from "@workspace/db";
+import { db, brandProfilesTable, userBrandsTable, analysesTable, platformSettingsTable, brandMentionsTable } from "@workspace/db";
 import { getSessionId } from "../middlewares/auth";
 import { chatCompletion, generateImage } from "../lib/openai";
 
 const router: IRouter = Router();
 
-async function getBrandInfo(sessionId: string) {
+async function getBrandInfo(sessionId: string, brandId?: number | null) {
+  // If brandId provided, use userBrandsTable (multi-brand)
+  if (brandId) {
+    const [brand] = await db.select().from(userBrandsTable)
+      .where(eq(userBrandsTable.id, brandId)).limit(1);
+    const [analysis] = await db.select().from(analysesTable)
+      .where(eq(analysesTable.sessionId, sessionId))
+      .orderBy(desc(analysesTable.createdAt)).limit(1);
+    if (brand) {
+      return {
+        brand: {
+          brandName: brand.brandName,
+          industry: brand.industry,
+          brandDescription: null,
+          targetAudience: null,
+          websiteUrl: brand.websiteUrl,
+          instagramHandle: brand.instagramHandle,
+          linkedinUrl: brand.linkedinUrl,
+          twitterHandle: brand.xHandle,
+          facebookUrl: brand.facebookUrl,
+          competitor1: null,
+          competitor2: null,
+          competitor3: null,
+        },
+        analysis,
+      };
+    }
+  }
+  // Fallback to legacy brandProfilesTable
   const [brand] = await db.select().from(brandProfilesTable).where(eq(brandProfilesTable.sessionId, sessionId)).limit(1);
   const [analysis] = await db.select().from(analysesTable)
     .where(eq(analysesTable.sessionId, sessionId))
@@ -24,7 +52,7 @@ router.post("/ai/content/generate", async (req, res): Promise<void> => {
     return;
   }
 
-  const { brand } = await getBrandInfo(sessionId);
+  const { brand } = await getBrandInfo(sessionId, req.body?.brandId ?? null);
   const brandName = brand?.brandName ?? "your brand";
   const industry = brand?.industry ?? "business";
   const description = brand?.brandDescription ?? "";
@@ -110,7 +138,7 @@ router.post("/ai/press-release", async (req, res): Promise<void> => {
     return;
   }
 
-  const { brand } = await getBrandInfo(sessionId);
+  const { brand } = await getBrandInfo(sessionId, req.body?.brandId ?? null);
   const brandName = brand?.brandName ?? "Our Company";
   const industryUsed = reqIndustry ?? brand?.industry ?? "technology";
 
@@ -156,7 +184,7 @@ router.post("/ai/review-templates", async (req, res): Promise<void> => {
 
   const { platform, productService, targetReviewSite } = req.body ?? {};
 
-  const { brand } = await getBrandInfo(sessionId);
+  const { brand } = await getBrandInfo(sessionId, req.body?.brandId ?? null);
   const brandName = brand?.brandName ?? "our company";
   const industry = brand?.industry ?? "business";
 
@@ -201,7 +229,7 @@ router.post("/ai/strategy-decode", async (req, res): Promise<void> => {
     return;
   }
 
-  const { brand } = await getBrandInfo(sessionId);
+  const { brand } = await getBrandInfo(sessionId, req.body?.brandId ?? null);
   const userBrandName = brand?.brandName ?? "your brand";
   const industry = reqIndustry ?? brand?.industry ?? "business";
 
@@ -257,7 +285,7 @@ router.post("/ai/trust-score", async (req, res): Promise<void> => {
 
   const { followerCount, avgLikes, avgComments, responseRate } = req.body ?? {};
 
-  const { brand, analysis } = await getBrandInfo(sessionId);
+  const { brand, analysis } = await getBrandInfo(sessionId, req.body?.brandId ?? null);
   const brandName = brand?.brandName ?? "your brand";
   const industry = brand?.industry ?? "your industry";
 

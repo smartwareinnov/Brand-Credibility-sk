@@ -1,5 +1,5 @@
 import { and, eq, isNotNull, desc, not, or, lte } from "drizzle-orm";
-import { db, subscriptionsTable, notificationsTable, userProfilesTable, brandProfilesTable, analysesTable } from "@workspace/db";
+import { db, subscriptionsTable, notificationsTable, userProfilesTable, brandProfilesTable, analysesTable, actionTasksTable } from "@workspace/db";
 import {
   sendSubscriptionReminderEmail,
   sendSubscriptionExpiredEmail,
@@ -200,14 +200,31 @@ async function runWeeklyDigestScheduler(): Promise<void> {
         if (notifPrefs.weeklyDigest === false) continue;
 
         const currentScore = Math.round(latestAnalysis.overallScore);
-        const topActions = ["Review your lowest-scoring brand area", "Collect 2 new customer reviews", "Post on your primary social platform"];
+
+        // Calculate real score delta vs previous analysis
+        const [previousAnalysis] = await db.select().from(analysesTable)
+          .where(and(eq(analysesTable.sessionId, profile.sessionId), eq(analysesTable.status, "completed")))
+          .orderBy(desc(analysesTable.createdAt)).limit(1).offset(1);
+        const scoreDelta = previousAnalysis?.overallScore
+          ? Math.round(latestAnalysis.overallScore - previousAnalysis.overallScore)
+          : 0;
+
+        // Get top 3 pending tasks as weekly actions
+        const pendingTasks = await db.select({ title: actionTasksTable.title })
+          .from(actionTasksTable)
+          .where(and(eq(actionTasksTable.analysisId, latestAnalysis.id), eq(actionTasksTable.isCompleted, false)))
+          .orderBy(actionTasksTable.priority)
+          .limit(3);
+        const topActions = pendingTasks.length > 0
+          ? pendingTasks.map(t => t.title)
+          : ["Review your lowest-scoring brand area", "Collect 2 new customer reviews", "Post on your primary social platform"];
 
         await sendWeeklyDigestEmail({
           to: profile.email,
           fullName: profile.fullName ?? profile.email.split("@")[0],
           brandName: brand.brandName ?? "Your Brand",
           currentScore,
-          scoreDelta: 0,
+          scoreDelta,
           topActions,
           appUrl,
         });

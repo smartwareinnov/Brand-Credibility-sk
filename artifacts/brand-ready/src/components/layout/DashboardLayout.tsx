@@ -43,6 +43,7 @@ const aiToolsNav = [
   { name: "Review Templates", href: "/review-templates", icon: Star },
   { name: "Industry Benchmarks", href: "/benchmarks", icon: BarChart3 },
   { name: "Score Tracker", href: "/competitor-tracker", icon: LineChart },
+  { name: "Share of Voice", href: "/share-of-voice", icon: TrendingUp },
   { name: "Strategy Decoder", href: "/strategy-decoder", icon: Search },
   { name: "Audience Trust Score", href: "/trust-score", icon: ShieldCheck },
   { name: "Viral Content Detector", href: "/viral-detector", icon: Flame },

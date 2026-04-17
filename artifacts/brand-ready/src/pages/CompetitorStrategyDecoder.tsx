@@ -10,6 +10,8 @@ import { useApi } from "@/lib/useApi";
 import { useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Search, Sparkles, Copy, Check, Shield, Globe, Instagram, Linkedin } from "lucide-react";
+import { useBrandSelector } from "@/hooks/useBrandSelector";
+import { BrandSelector } from "@/components/ui/BrandSelector";
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
@@ -34,6 +36,7 @@ function parseSection(content: string, heading: string): string {
 export default function CompetitorStrategyDecoder() {
   const { apiFetch } = useApi();
   const { toast } = useToast();
+  const { brands, selectedBrandId, setSelectedBrandId, hasMultipleBrands } = useBrandSelector();
   const [form, setForm] = useState({
     competitorName: "",
     competitorWebsite: "",
@@ -47,7 +50,7 @@ export default function CompetitorStrategyDecoder() {
   const decodeMutation = useMutation({
     mutationFn: () => apiFetch<{ content: string; competitorName: string; userBrandName: string }>("/ai/strategy-decode", {
       method: "POST",
-      body: JSON.stringify(form),
+      body: JSON.stringify({ ...form, brandId: selectedBrandId }),
     }),
     onSuccess: (data) => { setResult(data); toast({ title: "Strategy decoded!" }); },
     onError: (err) => { toast({ variant: "destructive", title: "Analysis failed", description: String(err) }); },
@@ -76,7 +79,11 @@ export default function CompetitorStrategyDecoder() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+        {hasMultipleBrands && (
+          <div className="mb-5">
+            <BrandSelector brands={brands} selectedBrandId={selectedBrandId} onSelect={(id) => { setSelectedBrandId(id); setResult(null); }} />
+          </div>
+        )}        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
           <div className="lg:col-span-2 space-y-4">
             <Card>
               <CardHeader className="pb-3">

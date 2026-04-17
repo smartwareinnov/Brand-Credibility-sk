@@ -15,6 +15,8 @@ import { useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { FileText, Share2, Megaphone, Mail, ImageIcon, Sparkles, Copy, Check, Wand2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useBrandSelector } from "@/hooks/useBrandSelector";
+import { BrandSelector } from "@/components/ui/BrandSelector";
 
 type ContentType = "blog" | "social" | "ad" | "email";
 
@@ -42,6 +44,7 @@ function CopyButton({ text }: { text: string }) {
 export default function ContentGenerator() {
   const { apiFetch } = useApi();
   const { toast } = useToast();
+  const { brands, selectedBrandId, setSelectedBrandId, hasMultipleBrands } = useBrandSelector();
   const [activeTab, setActiveTab] = useState<ContentType>("blog");
   const [topic, setTopic] = useState("");
   const [tone, setTone] = useState("professional");
@@ -51,7 +54,7 @@ export default function ContentGenerator() {
   const generateMutation = useMutation({
     mutationFn: () => apiFetch<{ content: string; imageUrl?: string | null; type: string }>("/ai/content/generate", {
       method: "POST",
-      body: JSON.stringify({ type: activeTab, topic, tone, includeImage }),
+      body: JSON.stringify({ type: activeTab, topic, tone, includeImage, brandId: selectedBrandId }),
     }),
     onSuccess: (data) => {
       setResult(data);
@@ -74,6 +77,12 @@ export default function ContentGenerator() {
           </h1>
           <p className="text-sm text-muted-foreground mt-1">Generate brand-specific content using AI — blog posts, social media, ads, and emails</p>
         </div>
+
+        {hasMultipleBrands && (
+          <div className="mb-5">
+            <BrandSelector brands={brands} selectedBrandId={selectedBrandId} onSelect={(id) => { setSelectedBrandId(id); setResult(null); }} />
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
           <div className="lg:col-span-2 space-y-4">

@@ -11,6 +11,8 @@ import { useApi } from "@/lib/useApi";
 import { useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Star, Sparkles, Copy, Check, MessageCircle, Mail, Instagram } from "lucide-react";
+import { useBrandSelector } from "@/hooks/useBrandSelector";
+import { BrandSelector } from "@/components/ui/BrandSelector";
 
 const REVIEW_SITES = ["Google Business Profile", "Trustpilot", "G2", "Capterra", "Facebook", "Yelp"];
 
@@ -57,6 +59,7 @@ function parseTemplates(raw: string): { whatsapp: string; email: string; dm: str
 export default function ReviewTemplates() {
   const { apiFetch } = useApi();
   const { toast } = useToast();
+  const { brands, selectedBrandId, setSelectedBrandId, hasMultipleBrands } = useBrandSelector();
   const [targetSite, setTargetSite] = useState("Google Business Profile");
   const [productService, setProductService] = useState("");
   const [result, setResult] = useState<{ content: string } | null>(null);
@@ -64,7 +67,7 @@ export default function ReviewTemplates() {
   const generateMutation = useMutation({
     mutationFn: () => apiFetch<{ content: string }>("/ai/review-templates", {
       method: "POST",
-      body: JSON.stringify({ targetReviewSite: targetSite, productService }),
+      body: JSON.stringify({ targetReviewSite: targetSite, productService, brandId: selectedBrandId }),
     }),
     onSuccess: (data) => { setResult(data); toast({ title: "Templates generated!" }); },
     onError: (err) => { toast({ variant: "destructive", title: "Generation failed", description: String(err) }); },
@@ -78,6 +81,16 @@ export default function ReviewTemplates() {
         <div className="mb-6">
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Star className="h-6 w-6 text-primary" />
+            Review Request Templates
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">AI-generated WhatsApp, email, and DM templates to collect more reviews</p>
+        </div>
+
+        {hasMultipleBrands && (
+          <div className="mb-5">
+            <BrandSelector brands={brands} selectedBrandId={selectedBrandId} onSelect={(id) => { setSelectedBrandId(id); setResult(null); }} />
+          </div>
+        )}
             Review Request Templates
           </h1>
           <p className="text-sm text-muted-foreground mt-1">AI-generated WhatsApp, email, and DM templates to collect reviews that actually convert</p>
