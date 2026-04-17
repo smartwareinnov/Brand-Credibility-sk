@@ -83,7 +83,7 @@ export default function ReviewTemplates() {
             <Star className="h-6 w-6 text-primary" />
             Review Request Templates
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">AI-generated WhatsApp, email, and DM templates to collect more reviews</p>
+          <p className="text-sm text-muted-foreground mt-1">AI-generated WhatsApp, email, and DM templates to collect reviews that actually convert</p>
         </div>
 
         {hasMultipleBrands && (
@@ -91,10 +91,6 @@ export default function ReviewTemplates() {
             <BrandSelector brands={brands} selectedBrandId={selectedBrandId} onSelect={(id) => { setSelectedBrandId(id); setResult(null); }} />
           </div>
         )}
-            Review Request Templates
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">AI-generated WhatsApp, email, and DM templates to collect reviews that actually convert</p>
-        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <div>
