@@ -1,118 +1,357 @@
 import { Router, type IRouter } from "express";
-import { eq, desc } from "drizzle-orm";
-import { db, brandProfilesTable, userBrandsTable, analysesTable, platformSettingsTable, brandMentionsTable } from "@workspace/db";
+import { eq, desc, and } from "drizzle-orm";
+import {
+  db, brandProfilesTable, userBrandsTable, analysesTable,
+  platformSettingsTable, brandMentionsTable, userCompetitorsTable, actionTasksTable,
+} from "@workspace/db";
 import { getSessionId } from "../middlewares/auth";
 import { chatCompletion, generateImage } from "../lib/openai";
 
 const router: IRouter = Router();
 
-async function getBrandInfo(sessionId: string, brandId?: number | null) {
-  // If brandId provided, use userBrandsTable (multi-brand)
+/* ─────────────────────────────────────────────────────────────────────────────
+   RICH BRAND CONTEXT BUILDER
+   Fetches everything available about a brand and returns a structured object
+   used to build deeply personalised AI prompts.
+───────────────────────────────────────────────────────────────────────────── */
+interface RichBrandContext {
+  brandName: string;
+  industry: string;
+  description: string;
+  websiteUrl: string;
+  targetAudience: string;
+  tone: string;           // derived from brand data
+  socialProfiles: string; // formatted list
+  competitors: string;    // formatted list with scores
+  scores: {
+    overall: number | null;
+    website: number | null;
+    social: number | null;
+    content: number | null;
+    reviews: number | null;
+    messaging: number | null;
+    adReadiness: string;
+  };
+  weaknesses: string[];   // dimensions scoring below 60
+  strengths: string[];    // dimensions scoring above 70
+  pendingActions: string; // top 3 roadmap tasks
+  mentionSentiment: string;
+  hasAnalysis: boolean;
+}
+
+async function getRichBrandContext(
+  sessionId: string,
+  brandId?: number | null
+): Promise<RichBrandContext> {
+  // Defaults
+  let brandName = "the brand";
+  let industry = "business";
+  let description = "";
+  let websiteUrl = "";
+  let targetAudience = "";
+  let instagram = "";
+  let linkedin = "";
+  let twitter = "";
+  let facebook = "";
+  let youtube = "";
+  let competitor1 = "";
+  let competitor2 = "";
+  let competitor3 = "";
+
+  // ── Brand profile ──────────────────────────────────────────────────────────
   if (brandId) {
-    const [brand] = await db.select().from(userBrandsTable)
-      .where(eq(userBrandsTable.id, brandId)).limit(1);
-    const [analysis] = await db.select().from(analysesTable)
-      .where(eq(analysesTable.sessionId, sessionId))
-      .orderBy(desc(analysesTable.createdAt)).limit(1);
-    if (brand) {
-      return {
-        brand: {
-          brandName: brand.brandName,
-          industry: brand.industry,
-          brandDescription: null,
-          targetAudience: null,
-          websiteUrl: brand.websiteUrl,
-          instagramHandle: brand.instagramHandle,
-          linkedinUrl: brand.linkedinUrl,
-          twitterHandle: brand.xHandle,
-          facebookUrl: brand.facebookUrl,
-          competitor1: null,
-          competitor2: null,
-          competitor3: null,
-        },
-        analysis,
-      };
+    const [ub] = await db.select().from(userBrandsTable)
+      .where(and(eq(userBrandsTable.id, brandId), eq(userBrandsTable.sessionId, sessionId))).limit(1);
+    if (ub) {
+      brandName = ub.brandName ?? brandName;
+      industry = ub.industry ?? industry;
+      websiteUrl = ub.websiteUrl ?? "";
+      instagram = ub.instagramHandle ?? "";
+      linkedin = ub.linkedinUrl ?? "";
+      twitter = ub.xHandle ?? "";
+      facebook = ub.facebookUrl ?? "";
+    }
+  } else {
+    const [bp] = await db.select().from(brandProfilesTable)
+      .where(eq(brandProfilesTable.sessionId, sessionId)).limit(1);
+    if (bp) {
+      brandName = bp.brandName ?? brandName;
+      industry = bp.industry ?? industry;
+      description = bp.brandDescription ?? "";
+      websiteUrl = bp.websiteUrl ?? "";
+      targetAudience = bp.targetAudience ?? "";
+      instagram = bp.instagramHandle ?? "";
+      linkedin = bp.linkedinUrl ?? "";
+      twitter = bp.twitterHandle ?? "";
+      facebook = bp.facebookUrl ?? "";
+      youtube = bp.youtubeUrl ?? "";
+      competitor1 = bp.competitor1 ?? "";
+      competitor2 = bp.competitor2 ?? "";
+      competitor3 = bp.competitor3 ?? "";
     }
   }
-  // Fallback to legacy brandProfilesTable
-  const [brand] = await db.select().from(brandProfilesTable).where(eq(brandProfilesTable.sessionId, sessionId)).limit(1);
-  const [analysis] = await db.select().from(analysesTable)
-    .where(eq(analysesTable.sessionId, sessionId))
+
+  // ── Social profiles ────────────────────────────────────────────────────────
+  const socialParts: string[] = [];
+  if (instagram) socialParts.push(`Instagram: @${instagram}`);
+  if (linkedin) socialParts.push(`LinkedIn: ${linkedin}`);
+  if (twitter) socialParts.push(`X/Twitter: @${twitter}`);
+  if (facebook) socialParts.push(`Facebook: ${facebook}`);
+  if (youtube) socialParts.push(`YouTube: ${youtube}`);
+  const socialProfiles = socialParts.length > 0 ? socialParts.join(", ") : "No social profiles set up yet";
+
+  // ── Latest analysis scores ─────────────────────────────────────────────────
+  const [latestAnalysis] = await db.select().from(analysesTable)
+    .where(and(eq(analysesTable.sessionId, sessionId), eq(analysesTable.status, "completed")))
     .orderBy(desc(analysesTable.createdAt)).limit(1);
-  return { brand, analysis };
+
+  const scores = {
+    overall: latestAnalysis?.overallScore != null ? Math.round(latestAnalysis.overallScore) : null,
+    website: latestAnalysis?.websiteScore != null ? Math.round(latestAnalysis.websiteScore) : null,
+    social: latestAnalysis?.socialScore != null ? Math.round(latestAnalysis.socialScore) : null,
+    content: latestAnalysis?.contentScore != null ? Math.round(latestAnalysis.contentScore) : null,
+    reviews: latestAnalysis?.reviewsScore != null ? Math.round(latestAnalysis.reviewsScore) : null,
+    messaging: latestAnalysis?.messagingScore != null ? Math.round(latestAnalysis.messagingScore) : null,
+    adReadiness: latestAnalysis?.adReadinessLevel ?? "not_assessed",
+  };
+
+  // ── Strengths and weaknesses ───────────────────────────────────────────────
+  const dimensionMap: Record<string, number | null> = {
+    "Website Experience": scores.website,
+    "Social Media Presence": scores.social,
+    "Content Quality": scores.content,
+    "Reviews & Trust": scores.reviews,
+    "Messaging Clarity": scores.messaging,
+  };
+  const weaknesses = Object.entries(dimensionMap)
+    .filter(([, v]) => v !== null && v < 60)
+    .sort(([, a], [, b]) => (a as number) - (b as number))
+    .map(([k, v]) => `${k} (${v}/100)`);
+  const strengths = Object.entries(dimensionMap)
+    .filter(([, v]) => v !== null && v >= 70)
+    .sort(([, a], [, b]) => (b as number) - (a as number))
+    .map(([k, v]) => `${k} (${v}/100)`);
+
+  // ── Top pending roadmap tasks ──────────────────────────────────────────────
+  let pendingActions = "No roadmap tasks yet — run a brand analysis first.";
+  if (latestAnalysis) {
+    const tasks = await db.select({ title: actionTasksTable.title, category: actionTasksTable.category })
+      .from(actionTasksTable)
+      .where(and(eq(actionTasksTable.analysisId, latestAnalysis.id), eq(actionTasksTable.isCompleted, false)))
+      .orderBy(actionTasksTable.priority)
+      .limit(3);
+    if (tasks.length > 0) {
+      pendingActions = tasks.map(t => `[${t.category}] ${t.title}`).join(" | ");
+    }
+  }
+
+  // ── Tracked competitors ────────────────────────────────────────────────────
+  const competitorRows = await db.select({ name: userCompetitorsTable.name, estimatedScore: userCompetitorsTable.estimatedScore })
+    .from(userCompetitorsTable)
+    .where(eq(userCompetitorsTable.sessionId, sessionId)).limit(5);
+
+  const competitorParts: string[] = [];
+  if (competitor1) competitorParts.push(competitor1);
+  if (competitor2) competitorParts.push(competitor2);
+  if (competitor3) competitorParts.push(competitor3);
+  competitorRows.forEach(c => {
+    const entry = c.estimatedScore ? `${c.name} (score: ${Math.round(c.estimatedScore)})` : c.name;
+    if (!competitorParts.includes(c.name)) competitorParts.push(entry);
+  });
+  const competitors = competitorParts.length > 0 ? competitorParts.join(", ") : "No competitors tracked yet";
+
+  // ── Brand mention sentiment ────────────────────────────────────────────────
+  const mentions = await db.select({ sentiment: brandMentionsTable.sentiment })
+    .from(brandMentionsTable)
+    .where(eq(brandMentionsTable.sessionId, sessionId)).limit(50);
+  let mentionSentiment = "No brand mentions tracked yet";
+  if (mentions.length > 0) {
+    const pos = mentions.filter(m => m.sentiment === "positive").length;
+    const neg = mentions.filter(m => m.sentiment === "negative").length;
+    const neu = mentions.filter(m => m.sentiment === "neutral").length;
+    mentionSentiment = `${mentions.length} mentions — ${pos} positive, ${neu} neutral, ${neg} negative`;
+  }
+
+  // ── Derive brand tone from available data ──────────────────────────────────
+  // Use industry + description to infer appropriate tone
+  const industryLower = industry.toLowerCase();
+  let tone = "professional and trustworthy";
+  if (industryLower.includes("tech") || industryLower.includes("saas") || industryLower.includes("software")) {
+    tone = "innovative, clear, and forward-thinking";
+  } else if (industryLower.includes("fashion") || industryLower.includes("beauty") || industryLower.includes("lifestyle")) {
+    tone = "aspirational, warm, and visually expressive";
+  } else if (industryLower.includes("finance") || industryLower.includes("legal") || industryLower.includes("health")) {
+    tone = "authoritative, trustworthy, and reassuring";
+  } else if (industryLower.includes("food") || industryLower.includes("restaurant") || industryLower.includes("beverage")) {
+    tone = "warm, sensory, and community-driven";
+  } else if (industryLower.includes("ecommerce") || industryLower.includes("retail")) {
+    tone = "benefit-focused, direct, and conversion-oriented";
+  } else if (industryLower.includes("education") || industryLower.includes("edtech")) {
+    tone = "encouraging, clear, and empowering";
+  } else if (industryLower.includes("agency") || industryLower.includes("marketing") || industryLower.includes("consulting")) {
+    tone = "confident, results-driven, and strategic";
+  }
+
+  return {
+    brandName,
+    industry,
+    description,
+    websiteUrl,
+    targetAudience,
+    tone,
+    socialProfiles,
+    competitors,
+    scores,
+    weaknesses,
+    strengths,
+    pendingActions,
+    mentionSentiment,
+    hasAnalysis: !!latestAnalysis,
+  };
+}
+
+/** Formats the rich context into a concise block for injection into prompts */
+function formatContextBlock(ctx: RichBrandContext): string {
+  const lines = [
+    `Brand: ${ctx.brandName}`,
+    `Industry: ${ctx.industry}`,
+  ];
+  if (ctx.description) lines.push(`About: ${ctx.description}`);
+  if (ctx.targetAudience) lines.push(`Target Audience: ${ctx.targetAudience}`);
+  if (ctx.websiteUrl) lines.push(`Website: ${ctx.websiteUrl}`);
+  lines.push(`Social Presence: ${ctx.socialProfiles}`);
+  lines.push(`Competitors: ${ctx.competitors}`);
+  lines.push(`Brand Tone: ${ctx.tone}`);
+
+  if (ctx.hasAnalysis) {
+    lines.push(`Overall Brand Score: ${ctx.scores.overall}/100`);
+    lines.push(`Ad Readiness: ${ctx.scores.adReadiness.replace(/_/g, " ")}`);
+    if (ctx.weaknesses.length > 0) lines.push(`Weakest Areas: ${ctx.weaknesses.join(", ")}`);
+    if (ctx.strengths.length > 0) lines.push(`Strongest Areas: ${ctx.strengths.join(", ")}`);
+    lines.push(`Top Roadmap Tasks: ${ctx.pendingActions}`);
+  }
+  lines.push(`Brand Mentions: ${ctx.mentionSentiment}`);
+  return lines.join("\n");
 }
 
 router.post("/ai/content/generate", async (req, res): Promise<void> => {
   const sessionId = getSessionId(req);
   if (!sessionId) { res.status(401).json({ error: "Authentication required" }); return; }
 
-  const { type, topic, tone, includeImage } = req.body ?? {};
+  const { type, topic, tone: userTone, includeImage } = req.body ?? {};
   if (!type || !["blog", "social", "ad", "email"].includes(type)) {
     res.status(400).json({ error: "type must be one of: blog, social, ad, email" });
     return;
   }
 
-  const { brand } = await getBrandInfo(sessionId, req.body?.brandId ?? null);
-  const brandName = brand?.brandName ?? "your brand";
-  const industry = brand?.industry ?? "business";
-  const description = brand?.brandDescription ?? "";
+  const ctx = await getRichBrandContext(sessionId, req.body?.brandId ?? null);
+  const contextBlock = formatContextBlock(ctx);
+  const effectiveTone = userTone ?? ctx.tone;
+  const topicLine = topic || `the core value proposition of ${ctx.brandName} for ${ctx.targetAudience || ctx.industry + " professionals"}`;
+
+  const systemPrompt = `You are a senior content strategist who specialises in creating high-converting content for ${ctx.industry} brands. You have deep knowledge of ${ctx.brandName}'s brand, audience, and competitive position. Every piece of content you create is specific to this brand — never generic.
+
+BRAND CONTEXT:
+${contextBlock}
+
+RULES:
+- Write exclusively for ${ctx.brandName}. Never produce generic content.
+- Reflect the brand's tone: ${effectiveTone}
+- Reference the target audience (${ctx.targetAudience || ctx.industry + " audience"}) naturally in the content
+- If the brand has weaknesses (${ctx.weaknesses.join(", ") || "none identified"}), avoid content that highlights them
+- Leverage the brand's strengths (${ctx.strengths.join(", ") || "to be determined"}) where relevant
+- All content must feel like it was written by someone who knows this brand deeply`;
 
   const prompts: Record<string, string> = {
-    blog: `You are a content strategist for ${brandName}, a ${industry} brand. ${description ? `Brand context: ${description}` : ""}
-Write a comprehensive blog post outline + first 300-word draft about: "${topic || `top challenges in ${industry}`}"
+    blog: `Write a comprehensive, SEO-optimised blog post for ${ctx.brandName} about: "${topicLine}"
+
+The post must:
+- Speak directly to ${ctx.targetAudience || "the target audience"} in the ${ctx.industry} space
+- Reflect ${ctx.brandName}'s brand voice: ${effectiveTone}
+- Reference real pain points this audience faces
+- Position ${ctx.brandName} as the authority on this topic
 
 Format:
-## Title: [compelling SEO title]
-## Meta Description: [150 chars]
+## Title: [compelling, SEO-rich title that includes the brand's niche]
+## Meta Description: [150 chars, includes primary keyword]
 ## Outline:
-1. [Section 1]
-2. [Section 2]
-...
-## Draft Opening (300 words):
-[Write the opening section]
+1. [Section with H2]
+2. [Section with H2]
+3. [Section with H2]
+4. [Section with H2]
+5. [Conclusion with CTA]
+## Opening Draft (400 words):
+[Write the full opening section — hook, context, and first key point]`,
 
-Tone: ${tone ?? "professional and informative"}`,
+    social: `Write 3 social media posts for ${ctx.brandName} about: "${topicLine}"
 
-    social: `You are a social media manager for ${brandName}, a ${industry} brand. ${description ? `Brand context: ${description}` : ""}
-Write 3 social media post variations about: "${topic || `our brand story and mission`}"
+Each post must:
+- Sound like it comes from ${ctx.brandName}'s actual social voice
+- Speak to ${ctx.targetAudience || "the target audience"} specifically
+- Reference real industry context, not generic statements
+- Drive engagement through a specific question, insight, or CTA
 
-For each post include:
-- Platform: LinkedIn / Twitter / Instagram
-- Caption (appropriate length for platform)
-- 5 relevant hashtags
-- Emoji usage appropriate to platform
+Post 1 — LinkedIn (professional, 150-200 words, thought leadership angle):
+[Post content]
+Hashtags: [5 niche-specific hashtags]
 
-Tone: ${tone ?? "engaging and authentic"}`,
+Post 2 — X/Twitter (punchy, under 280 chars, bold take or insight):
+[Post content]
+Hashtags: [3 hashtags]
 
-    ad: `You are a direct-response copywriter for ${brandName}, a ${industry} brand. ${description ? `Brand context: ${description}` : ""}
-Write 3 ad copy variations for: "${topic || `our core product/service`}"
+Post 3 — Instagram (visual storytelling, 100-150 words, community-focused):
+[Post content]
+Hashtags: [8 hashtags including niche + brand tags]`,
 
-For each variation:
-- Headline (max 30 chars)
-- Primary Text (max 125 chars)
-- Description (max 30 chars)
-- Call to Action: [button text]
+    ad: `Write 3 direct-response ad variations for ${ctx.brandName} promoting: "${topicLine}"
 
-Tone: ${tone ?? "persuasive and benefit-focused"}`,
+Each ad must:
+- Lead with the specific pain point of ${ctx.targetAudience || "the target audience"}
+- Highlight ${ctx.brandName}'s unique positioning vs competitors (${ctx.competitors})
+- Use ${effectiveTone} tone throughout
+- Drive a clear, specific action
 
-    email: `You are an email marketing specialist for ${brandName}, a ${industry} brand. ${description ? `Brand context: ${description}` : ""}
-Write a professional marketing email about: "${topic || `our latest update or offer`}"
+Ad 1 — Awareness (broad audience, problem-focused):
+Headline: [max 30 chars]
+Primary Text: [max 125 chars, lead with pain point]
+Description: [max 30 chars]
+CTA: [button text]
 
-Format:
-Subject Line: [compelling subject]
-Preview Text: [50 chars]
+Ad 2 — Consideration (warm audience, solution-focused):
+Headline: [max 30 chars]
+Primary Text: [max 125 chars, lead with benefit]
+Description: [max 30 chars]
+CTA: [button text]
+
+Ad 3 — Conversion (hot audience, offer-focused):
+Headline: [max 30 chars]
+Primary Text: [max 125 chars, urgency + social proof]
+Description: [max 30 chars]
+CTA: [button text]`,
+
+    email: `Write a full marketing email for ${ctx.brandName} about: "${topicLine}"
+
+The email must:
+- Open with a subject line that speaks directly to ${ctx.targetAudience || "the audience"}'s biggest concern
+- Feel personal and written by a human, not a template
+- Reflect ${ctx.brandName}'s voice: ${effectiveTone}
+- Include a clear, single CTA that drives one specific action
+
+Subject Line: [compelling, personalised, under 50 chars]
+Preview Text: [50 chars, complements subject line]
+
 ---
-[Email body with clear sections, personalization, and CTA]
+[Full email body — greeting, hook paragraph, value section, social proof or insight, CTA paragraph]
 ---
-CTA Button: [button text]
 
-Tone: ${tone ?? "friendly and professional"}`,
+CTA Button: [specific action text]
+P.S.: [optional — one-line reinforcement of the main message]`,
   };
 
   const content = await chatCompletion([
-    { role: "system", content: "You are an expert content creator who writes high-converting content for SaaS and e-commerce brands." },
+    { role: "system", content: systemPrompt },
     { role: "user", content: prompts[type] },
-  ], { maxTokens: 1200, temperature: 0.8 });
+  ], { model: "gpt-4o", maxTokens: 1400, temperature: 0.75 });
 
   if (!content) {
     res.status(503).json({ error: "Content generation is currently unavailable. Please try again later." });
@@ -121,102 +360,152 @@ Tone: ${tone ?? "friendly and professional"}`,
 
   let imageUrl: string | null = null;
   if (includeImage) {
-    const imagePrompt = `Professional ${type === "blog" ? "blog hero image" : type === "social" ? "social media graphic" : "advertisement visual"} for ${brandName} in the ${industry} industry. Topic: ${topic ?? "brand content"}. Clean, modern, high-quality marketing visual, no text overlays.`;
+    const imagePrompt = `Professional ${type === "blog" ? "blog hero image" : type === "social" ? "social media graphic" : "advertisement visual"} for ${ctx.brandName}, a ${ctx.industry} brand. Topic: ${topicLine}. Clean, modern, high-quality marketing visual, no text overlays.`;
     imageUrl = await generateImage(imagePrompt);
   }
 
-  res.json({ content, imageUrl, type });
+  res.json({ content, imageUrl, type, brandName: ctx.brandName });
 });
 
 router.post("/ai/press-release", async (req, res): Promise<void> => {
   const sessionId = getSessionId(req);
   if (!sessionId) { res.status(401).json({ error: "Authentication required" }); return; }
 
-  const { what, who, why, quote, contact, industry: reqIndustry, country } = req.body ?? {};
+  const { what, who, why, quote, contact, country } = req.body ?? {};
   if (!what || !who || !why) {
     res.status(400).json({ error: "what, who, and why are required" });
     return;
   }
 
-  const { brand } = await getBrandInfo(sessionId, req.body?.brandId ?? null);
-  const brandName = brand?.brandName ?? "Our Company";
-  const industryUsed = reqIndustry ?? brand?.industry ?? "technology";
+  const ctx = await getRichBrandContext(sessionId, req.body?.brandId ?? null);
+  const contextBlock = formatContextBlock(ctx);
 
-  const prompt = `Write a professional, publication-ready press release for ${brandName}.
+  const systemPrompt = `You are a veteran PR strategist and press release writer who has placed stories in major publications across ${country ?? "global"} media. You know exactly how to frame a story for ${ctx.industry} brands and which journalists cover this space.
 
-Details:
+You are writing for ${ctx.brandName} — a ${ctx.industry} brand. You know this brand deeply:
+${contextBlock}
+
+Your press release must:
+- Sound like it was written by ${ctx.brandName}'s own communications team
+- Reflect the brand's tone: ${ctx.tone}
+- Be newsworthy and specific — no vague corporate language
+- Position ${ctx.brandName} credibly within the ${ctx.industry} landscape`;
+
+  const prompt = `Write a publication-ready press release for ${ctx.brandName}.
+
+ANNOUNCEMENT DETAILS:
 - What: ${what}
 - Who it's for: ${who}
 - Why it matters: ${why}
-- Quote: ${quote ?? "To be provided"}
-- Contact: ${contact ?? "press@company.com"}
-- Industry: ${industryUsed}
-- Country/Region: ${country ?? "Global"}
+- Quote: ${quote || `[To be provided by ${ctx.brandName} leadership]`}
+- Press Contact: ${contact || `press@${ctx.brandName.toLowerCase().replace(/\s+/g, "")}.com`}
+- Target Region: ${country ?? "Global"}
 
-Format the press release with:
-- EMBARGOED UNTIL: [Date] (leave blank for immediate release)
-- Headline (compelling, newsworthy)
-- Subheadline
-- Dateline (City, Date)
-- Body (3-4 paragraphs: news hook, details, significance, quote, boilerplate)
-- ### (end marker)
-- About ${brandName} (2-sentence boilerplate)
-- Media Contact section
+PRESS RELEASE FORMAT:
+FOR IMMEDIATE RELEASE
 
-Then on a new section titled "JOURNALIST TARGETS:", provide a list of 15 relevant journalists, blogs, and media outlets to pitch to, filtered by ${industryUsed} industry${country ? ` in ${country}` : ""}. For each: Name/Outlet, Focus Area, and why they'd cover this story.`;
+[HEADLINE — newsworthy, specific, under 12 words]
+[SUBHEADLINE — adds context, 1 sentence]
+
+[CITY, DATE] — [Opening paragraph: the news hook in 2-3 sentences. Lead with the most newsworthy element.]
+
+[Body paragraph 1: Context — why this matters now, market problem being solved]
+
+[Body paragraph 2: Details — how it works, key features or milestones, data points if available]
+
+[Body paragraph 3: Quote from ${ctx.brandName} leadership — make it sound authentic, not corporate]
+
+[Body paragraph 4: Significance — broader industry impact, what this means for ${who}]
+
+###
+
+About ${ctx.brandName}:
+[2-sentence boilerplate that captures the brand's positioning and mission in the ${ctx.industry} space]
+
+Media Contact:
+${contact || `press@${ctx.brandName.toLowerCase().replace(/\s+/g, "")}.com`}
+
+---
+
+JOURNALIST TARGETS FOR ${ctx.industry.toUpperCase()} IN ${(country ?? "GLOBAL").toUpperCase()}:
+
+Provide 15 specific journalists, editors, newsletters, and media outlets that would genuinely cover this story. For each:
+- Name / Publication
+- Their beat / focus area
+- Why they would cover this specific story (be specific to the announcement)
+- Suggested pitch angle (1 sentence)`;
 
   const content = await chatCompletion([
-    { role: "system", content: "You are a veteran PR professional who has placed stories in TechCrunch, Forbes, and leading industry publications. You write crisp, newsworthy press releases and know exactly which journalists to target for specific industries." },
+    { role: "system", content: systemPrompt },
     { role: "user", content: prompt },
-  ], { maxTokens: 1800, temperature: 0.6 });
+  ], { model: "gpt-4o", maxTokens: 2000, temperature: 0.6 });
 
   if (!content) {
     res.status(503).json({ error: "Press release generation is currently unavailable. Please try again later." });
     return;
   }
 
-  res.json({ content, brandName });
+  res.json({ content, brandName: ctx.brandName });
 });
 
 router.post("/ai/review-templates", async (req, res): Promise<void> => {
   const sessionId = getSessionId(req);
   if (!sessionId) { res.status(401).json({ error: "Authentication required" }); return; }
 
-  const { platform, productService, targetReviewSite } = req.body ?? {};
+  const { productService, targetReviewSite } = req.body ?? {};
 
-  const { brand } = await getBrandInfo(sessionId, req.body?.brandId ?? null);
-  const brandName = brand?.brandName ?? "our company";
-  const industry = brand?.industry ?? "business";
+  const ctx = await getRichBrandContext(sessionId, req.body?.brandId ?? null);
+  const contextBlock = formatContextBlock(ctx);
 
-  const prompt = `Create 3 review request message templates for ${brandName}, a ${industry} ${productService ? `offering ${productService}` : "company"}.
+  const systemPrompt = `You are a customer success specialist who writes review request messages that feel genuinely personal and achieve high response rates. You know ${ctx.brandName} deeply and write in their exact voice.
 
-Create templates for:
-1. WhatsApp message (conversational, brief, with a direct link placeholder)
-2. Email (subject line + body, personal but professional)
-3. DM/Direct message (Instagram/Twitter style, casual and friendly)
+BRAND CONTEXT:
+${contextBlock}
+
+Your messages must:
+- Sound like they come from a real person at ${ctx.brandName}, not a template
+- Reflect the brand's tone: ${ctx.tone}
+- Speak to ${ctx.targetAudience || "the customer"} in language they actually use
+- Feel warm and conversational — never robotic or salesy
+- Be short enough that people actually read them`;
+
+  const prompt = `Write personalised review request templates for ${ctx.brandName}${productService ? ` specifically for their ${productService}` : ""}.
 
 Target review platform: ${targetReviewSite ?? "Google Business Profile"}
+Brand's audience: ${ctx.targetAudience || ctx.industry + " customers"}
+Brand tone: ${ctx.tone}
 
-For each template:
-- Make it feel personal, not copy-pasted
-- Keep it short (people won't read walls of text)
-- Include a direct ask with specific link placeholder: [REVIEW_LINK]
-- Add a personal touch that references their experience
-- Include a light follow-up version to send if no response after 3 days
+Create 4 templates. Each must feel like it was written specifically for ${ctx.brandName}'s relationship with their customers.
 
-Format each with clear labels: [WHATSAPP], [EMAIL], [DM] and [FOLLOW-UP] variations.`;
+[WHATSAPP]
+Subject: N/A (WhatsApp message)
+[Write a conversational WhatsApp message — 3-4 sentences max. Start with the customer's name placeholder. Reference their experience with ${ctx.brandName}. Make the ask feel natural. Include [REVIEW_LINK]. End warmly.]
+
+[FOLLOW-UP-WHATSAPP]
+[A gentle 2-sentence follow-up to send 3 days later if no response. Lighter touch, no pressure.]
+
+[EMAIL]
+Subject: [Personalised subject line that references their experience, not generic "leave a review"]
+[Write a full email — greeting, 2-3 short paragraphs, clear CTA with [REVIEW_LINK]. Sign off with a real name placeholder. Should feel like it came from a founder or team member, not a marketing department.]
+
+[FOLLOW-UP-EMAIL]
+Subject: [Follow-up subject line]
+[3-sentence follow-up email. Acknowledge they're busy. Keep it light.]
+
+[DM]
+[Instagram/Twitter DM — casual, 2-3 sentences. Feels like a genuine message from someone who cares about their experience. Include [REVIEW_LINK].]`;
 
   const content = await chatCompletion([
-    { role: "system", content: "You are a customer success expert who specializes in review generation campaigns that feel authentic and achieve 30%+ response rates." },
+    { role: "system", content: systemPrompt },
     { role: "user", content: prompt },
-  ], { maxTokens: 1200, temperature: 0.75 });
+  ], { model: "gpt-4o", maxTokens: 1400, temperature: 0.72 });
 
   if (!content) {
     res.status(503).json({ error: "Template generation is currently unavailable. Please try again later." });
     return;
   }
 
-  res.json({ content, brandName, platform });
+  res.json({ content, brandName: ctx.brandName });
 });
 
 router.post("/ai/strategy-decode", async (req, res): Promise<void> => {

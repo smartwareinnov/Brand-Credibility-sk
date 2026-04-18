@@ -16,7 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { FileText, Share2, Megaphone, Mail, ImageIcon, Sparkles, Copy, Check, Wand2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useBrandSelector } from "@/hooks/useBrandSelector";
-import { BrandSelector } from "@/components/ui/BrandSelector";
+import { BrandSelector, BrandContextBadge } from "@/components/ui/BrandSelector";
 
 type ContentType = "blog" | "social" | "ad" | "email";
 
@@ -44,7 +44,7 @@ function CopyButton({ text }: { text: string }) {
 export default function ContentGenerator() {
   const { apiFetch } = useApi();
   const { toast } = useToast();
-  const { brands, selectedBrandId, setSelectedBrandId, hasMultipleBrands } = useBrandSelector();
+  const { brands, selectedBrandId, setSelectedBrandId, selectedBrand, hasMultipleBrands } = useBrandSelector();
   const [activeTab, setActiveTab] = useState<ContentType>("blog");
   const [topic, setTopic] = useState("");
   const [tone, setTone] = useState("professional");
@@ -81,6 +81,11 @@ export default function ContentGenerator() {
         {hasMultipleBrands && (
           <div className="mb-5">
             <BrandSelector brands={brands} selectedBrandId={selectedBrandId} onSelect={(id) => { setSelectedBrandId(id); setResult(null); }} />
+          </div>
+        )}
+        {!hasMultipleBrands && selectedBrand && (
+          <div className="mb-5">
+            <BrandContextBadge brand={selectedBrand} />
           </div>
         )}
 

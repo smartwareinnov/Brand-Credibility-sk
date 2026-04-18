@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Newspaper, Sparkles, Copy, Check, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useBrandSelector } from "@/hooks/useBrandSelector";
-import { BrandSelector } from "@/components/ui/BrandSelector";
+import { BrandSelector, BrandContextBadge } from "@/components/ui/BrandSelector";
 
 const COUNTRIES = [
   "Nigeria", "Kenya", "Ghana", "South Africa", "United States", "United Kingdom",
@@ -37,7 +37,7 @@ function CopyButton({ text }: { text: string }) {
 export default function PressReleaseBuilder() {
   const { apiFetch } = useApi();
   const { toast } = useToast();
-  const { brands, selectedBrandId, setSelectedBrandId, hasMultipleBrands } = useBrandSelector();
+  const { brands, selectedBrandId, setSelectedBrandId, selectedBrand, hasMultipleBrands } = useBrandSelector();
   const [form, setForm] = useState({ what: "", who: "", why: "", quote: "", contact: "", country: "Global" });
   const [result, setResult] = useState<{ content: string; brandName: string } | null>(null);
 
@@ -68,6 +68,11 @@ export default function PressReleaseBuilder() {
         {hasMultipleBrands && (
           <div className="mb-5">
             <BrandSelector brands={brands} selectedBrandId={selectedBrandId} onSelect={(id) => { setSelectedBrandId(id); setResult(null); }} />
+          </div>
+        )}
+        {!hasMultipleBrands && selectedBrand && (
+          <div className="mb-5">
+            <BrandContextBadge brand={selectedBrand} />
           </div>
         )}
 

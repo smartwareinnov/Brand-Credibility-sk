@@ -33,7 +33,10 @@ export function useBrandSelector() {
   }, [brands, selectedBrandId]);
 
   const selectedBrand = brands.find((b) => b.id === selectedBrandId) ?? null;
+  // Only show selector UI when user has more than one brand
   const hasMultipleBrands = brands.length > 1;
+  // True when brands are loaded and a selection exists
+  const isReady = !isLoading && selectedBrandId !== null;
 
   return {
     brands,
@@ -42,5 +45,6 @@ export function useBrandSelector() {
     selectedBrand,
     hasMultipleBrands,
     isLoading,
+    isReady,
   };
 }

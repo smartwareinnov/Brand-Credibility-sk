@@ -12,7 +12,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Star, Sparkles, Copy, Check, MessageCircle, Mail, Instagram } from "lucide-react";
 import { useBrandSelector } from "@/hooks/useBrandSelector";
-import { BrandSelector } from "@/components/ui/BrandSelector";
+import { BrandSelector, BrandContextBadge } from "@/components/ui/BrandSelector";
 
 const REVIEW_SITES = ["Google Business Profile", "Trustpilot", "G2", "Capterra", "Facebook", "Yelp"];
 
@@ -43,15 +43,17 @@ function TemplateSection({ title, icon: Icon, content }: { title: string; icon: 
   );
 }
 
-function parseTemplates(raw: string): { whatsapp: string; email: string; dm: string } {
+function parseTemplates(raw: string): { whatsapp: string; email: string; dm: string; followUpWhatsapp: string; followUpEmail: string } {
   const getSection = (tag: string) => {
-    const regex = new RegExp(`\\[${tag}\\]([\\s\\S]*?)(?=\\[(?:WHATSAPP|EMAIL|DM)\\]|$)`, "i");
+    const regex = new RegExp(`\\[${tag}\\]([\\s\\S]*?)(?=\\[(?:WHATSAPP|EMAIL|DM|FOLLOW-UP|$))`, "i");
     const match = raw.match(regex);
     return match ? match[1].trim() : "";
   };
   return {
     whatsapp: getSection("WHATSAPP"),
+    followUpWhatsapp: getSection("FOLLOW-UP-WHATSAPP"),
     email: getSection("EMAIL"),
+    followUpEmail: getSection("FOLLOW-UP-EMAIL"),
     dm: getSection("DM"),
   };
 }
@@ -59,7 +61,7 @@ function parseTemplates(raw: string): { whatsapp: string; email: string; dm: str
 export default function ReviewTemplates() {
   const { apiFetch } = useApi();
   const { toast } = useToast();
-  const { brands, selectedBrandId, setSelectedBrandId, hasMultipleBrands } = useBrandSelector();
+  const { brands, selectedBrandId, setSelectedBrandId, selectedBrand, hasMultipleBrands } = useBrandSelector();
   const [targetSite, setTargetSite] = useState("Google Business Profile");
   const [productService, setProductService] = useState("");
   const [result, setResult] = useState<{ content: string } | null>(null);
@@ -89,6 +91,11 @@ export default function ReviewTemplates() {
         {hasMultipleBrands && (
           <div className="mb-5">
             <BrandSelector brands={brands} selectedBrandId={selectedBrandId} onSelect={(id) => { setSelectedBrandId(id); setResult(null); }} />
+          </div>
+        )}
+        {!hasMultipleBrands && selectedBrand && (
+          <div className="mb-5">
+            <BrandContextBadge brand={selectedBrand} />
           </div>
         )}
 
@@ -144,7 +151,9 @@ export default function ReviewTemplates() {
         ) : templates ? (
           <div className="space-y-4">
             {templates.whatsapp && <TemplateSection title="WhatsApp Message" icon={MessageCircle} content={templates.whatsapp} />}
+            {templates.followUpWhatsapp && <TemplateSection title="WhatsApp Follow-up (Day 3)" icon={MessageCircle} content={templates.followUpWhatsapp} />}
             {templates.email && <TemplateSection title="Email" icon={Mail} content={templates.email} />}
+            {templates.followUpEmail && <TemplateSection title="Email Follow-up (Day 3)" icon={Mail} content={templates.followUpEmail} />}
             {templates.dm && <TemplateSection title="DM / Direct Message" icon={Instagram} content={templates.dm} />}
             {result && !templates.whatsapp && !templates.email && !templates.dm && (
               <div className="border rounded-lg p-4">
