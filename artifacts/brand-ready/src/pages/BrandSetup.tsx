@@ -30,13 +30,7 @@ import {
 } from "@workspace/api-client-react";
 import { useSession } from "@/hooks/useSession";
 import { cn } from "@/lib/utils";
-
-const INDUSTRIES = [
-  "E-commerce", "Technology / SaaS", "Consulting / Coaching", "Fashion & Apparel",
-  "Food & Beverage", "Health & Wellness", "Finance & Fintech", "Real Estate",
-  "Education & E-learning", "Media & Entertainment", "Travel & Hospitality",
-  "Beauty & Personal Care", "Professional Services", "Non-profit", "Other",
-];
+import { INDUSTRIES } from "@/lib/industries";
 
 const brandSchema = z.object({
   brandName: z.string().min(1, "Brand name is required"),

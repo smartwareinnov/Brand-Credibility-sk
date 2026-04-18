@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { useSession } from "@/hooks/useSession";
 import { useApi } from "@/lib/useApi";
 import { Link } from "wouter";
+import { INDUSTRIES } from "@/lib/industries";
 
 const ANALYSIS_STEPS = [
   { icon: Search, label: "Website & SEO", desc: "Scanning SEO metrics & organic keywords", color: "text-orange-500", bg: "bg-orange-500/10" },
@@ -54,6 +55,8 @@ type UserBrand = {
   industry: string | null;
   instagramHandle: string | null;
   linkedinUrl: string | null;
+  facebookUrl: string | null;
+  xHandle: string | null;
 };
 
 const FORM_STEPS = [
@@ -171,9 +174,9 @@ export default function Analyze() {
     if (brand.industry) form.setValue("industry", brand.industry, { shouldValidate: true });
     if (brand.instagramHandle) form.setValue("instagramHandle", brand.instagramHandle);
     if (brand.linkedinUrl) form.setValue("linkedinUrl", brand.linkedinUrl);
-    form.setValue("facebookUrl", "");
-    form.setValue("xHandle", "");
-    form.setValue("brandDescription", "");
+    if (brand.facebookUrl) form.setValue("facebookUrl", brand.facebookUrl);
+    if (brand.xHandle) form.setValue("xHandle", brand.xHandle);
+    // Keep brandDescription and email blank — user fills those per-analysis
   };
 
   const startStepAnimation = () => {
@@ -400,16 +403,9 @@ export default function Analyze() {
                             <SelectTrigger><SelectValue placeholder="Select an industry" /></SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="ecommerce">E-commerce / Retail</SelectItem>
-                            <SelectItem value="saas">SaaS / Software</SelectItem>
-                            <SelectItem value="agency">Agency / Services</SelectItem>
-                            <SelectItem value="consulting">Consulting / Coaching</SelectItem>
-                            <SelectItem value="fintech">Fintech / Finance</SelectItem>
-                            <SelectItem value="health">Health & Wellness</SelectItem>
-                            <SelectItem value="education">Education / E-learning</SelectItem>
-                            <SelectItem value="local">Local Business</SelectItem>
-                            <SelectItem value="creator">Creator / Influencer</SelectItem>
-                            <SelectItem value="other">Other</SelectItem>
+                            {INDUSTRIES.map((ind) => (
+                              <SelectItem key={ind} value={ind}>{ind}</SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                         <FormMessage />

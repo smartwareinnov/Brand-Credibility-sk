@@ -572,7 +572,7 @@ router.post("/ai/trust-score", async (req, res): Promise<void> => {
   const sessionId = getSessionId(req);
   if (!sessionId) { res.status(401).json({ error: "Authentication required" }); return; }
 
-  const { followerCount, avgLikes, avgComments, responseRate } = req.body ?? {};
+  const { followerCount, avgLikes, avgComments, responseRate, platform } = req.body ?? {};
 
   const { brand, analysis } = await getBrandInfo(sessionId, req.body?.brandId ?? null);
   const brandName = brand?.brandName ?? "your brand";
@@ -613,44 +613,61 @@ router.post("/ai/trust-score", async (req, res): Promise<void> => {
   const communityScore = engagementScore ?? socialBaseScore;
   const audienceScore = mentionSentimentScore ?? socialBaseScore;
 
+  // Platform-specific engagement benchmarks for accurate scoring
+  const platformBenchmarks: Record<string, { goodEngagementRate: number; label: string }> = {
+    instagram: { goodEngagementRate: 0.03, label: "Instagram" },
+    tiktok: { goodEngagementRate: 0.06, label: "TikTok" },
+    facebook: { goodEngagementRate: 0.01, label: "Facebook" },
+    twitter: { goodEngagementRate: 0.01, label: "X/Twitter" },
+    linkedin: { goodEngagementRate: 0.03, label: "LinkedIn" },
+    youtube: { goodEngagementRate: 0.04, label: "YouTube" },
+  };
+  const platformInfo = platform ? (platformBenchmarks[platform] ?? null) : null;
+
   const dataContext = `
 Brand: ${brandName} (${industry})
+Platform Analyzed: ${platformInfo?.label ?? "Not specified"}
 Overall Brand Score: ${overallScore != null ? `${overallScore}/100` : "Not yet analyzed"}
 Website Credibility Score: ${websiteScore != null ? `${websiteScore}/100` : "Unknown"}
 Social Media Score: ${socialScore != null ? `${socialScore}/100` : "Unknown"}
-Engagement Stats (user-provided):
+Platform Engagement Stats (user-provided — use ONLY these numbers, do not assume or hallucinate):
+  - Platform: ${platformInfo?.label ?? "General"}
   - Followers: ${followerCount ?? "Not provided"}
   - Avg Likes/Post: ${avgLikes ?? "Not provided"}
   - Avg Comments/Post: ${avgComments ?? "Not provided"}
   - Response Rate: ${responseRate != null ? `${responseRate}%` : "Not provided"}
+  - Calculated Engagement Rate: ${followerCount && avgLikes ? `${((avgLikes / followerCount) * 100).toFixed(2)}%` : "Cannot calculate"}
+  - Platform Benchmark (good engagement): ${platformInfo ? `${(platformInfo.goodEngagementRate * 100).toFixed(1)}%` : "N/A"}
 Brand Mentions Analyzed: ${totalMentions}
   - Positive: ${sentimentCounts.positive}, Neutral: ${sentimentCounts.neutral}, Negative: ${sentimentCounts.negative}
   - Mention Sentiment Score: ${mentionSentimentScore != null ? `${mentionSentimentScore}/100` : "Insufficient data"}
+
+CRITICAL INSTRUCTION: Base your scoring ONLY on the data provided above. Do NOT assume, estimate, or hallucinate any engagement numbers. If a metric is "Not provided", score that pillar based only on available brand analysis data. Be accurate and logical.
 `.trim();
 
-  const prompt = `You are a brand trust analyst. Based on the following data for ${brandName}, compute an Audience Trust Score and provide a structured analysis.
+  const prompt = `You are a brand trust analyst. Based on the following REAL data for ${brandName}, compute an Audience Trust Score.
 
-DATA:
+DATA (use ONLY what is provided — never assume missing values):
 ${dataContext}
 
 Respond with ONLY valid JSON in this exact structure:
 {
-  "overallScore": <0-100 number>,
+  "overallScore": <0-100 number based strictly on provided data>,
   "grade": <"A+"|"A"|"B+"|"B"|"C"|"D"|"F">,
   "pillars": {
-    "reviewTrust": { "score": <0-100>, "label": <"Excellent"|"Good"|"Fair"|"Weak">, "insight": "<1 sentence>" },
-    "communityEngagement": { "score": <0-100>, "label": <"Excellent"|"Good"|"Fair"|"Weak">, "insight": "<1 sentence>" },
-    "contentCredibility": { "score": <0-100>, "label": <"Excellent"|"Good"|"Fair"|"Weak">, "insight": "<1 sentence>" },
-    "audienceConversation": { "score": <0-100>, "label": <"Excellent"|"Good"|"Fair"|"Weak">, "insight": "<1 sentence>" }
+    "reviewTrust": { "score": <0-100>, "label": <"Excellent"|"Good"|"Fair"|"Weak">, "insight": "<1 sentence based on actual data>" },
+    "communityEngagement": { "score": <0-100>, "label": <"Excellent"|"Good"|"Fair"|"Weak">, "insight": "<1 sentence — if no engagement data provided, say so explicitly>" },
+    "contentCredibility": { "score": <0-100>, "label": <"Excellent"|"Good"|"Fair"|"Weak">, "insight": "<1 sentence based on actual data>" },
+    "audienceConversation": { "score": <0-100>, "label": <"Excellent"|"Good"|"Fair"|"Weak">, "insight": "<1 sentence based on actual data>" }
   },
-  "summary": "<2-3 sentence overall assessment of audience trust and credibility>",
-  "recommendations": ["<action 1>", "<action 2>", "<action 3>", "<action 4>"]
+  "summary": "<2-3 sentence assessment based strictly on the data provided. Mention the platform. Do not invent metrics.>",
+  "recommendations": ["<specific action 1>", "<specific action 2>", "<specific action 3>", "<specific action 4>"]
 }`;
 
   const raw = await chatCompletion([
-    { role: "system", content: "You are a brand credibility analyst. Always respond with valid JSON only, no markdown." },
+    { role: "system", content: "You are a brand credibility analyst. You ONLY use data explicitly provided to you. You never assume, estimate, or hallucinate metrics. Always respond with valid JSON only, no markdown." },
     { role: "user", content: prompt },
-  ], { maxTokens: 1000, temperature: 0.4 });
+  ], { maxTokens: 1000, temperature: 0.3 });
 
   if (!raw) {
     res.status(503).json({ error: "Trust Score analysis is currently unavailable. Please try again later." });
@@ -680,6 +697,9 @@ router.post("/ai/viral-content", async (req, res): Promise<void> => {
     return;
   }
 
+  const validPlatforms = ["youtube", "instagram", "tiktok", "facebook", "twitter", "linkedin"];
+  const effectivePlatform = validPlatforms.includes(platform) ? platform : "youtube";
+
   const [ytSetting] = await db
     .select({ value: platformSettingsTable.value })
     .from(platformSettingsTable)
@@ -688,6 +708,112 @@ router.post("/ai/viral-content", async (req, res): Promise<void> => {
 
   const youtubeApiKey = ytSetting?.value || null;
   const youtubeConfigured = !!youtubeApiKey;
+
+  let videos: {
+    videoId: string;
+    title: string;
+    channelTitle: string;
+    publishedAt: string;
+    viewCount: string;
+    likeCount: string;
+    commentCount: string;
+  }[] = [];
+
+  // Only fetch YouTube data when platform is youtube and API is configured
+  if (youtubeApiKey && effectivePlatform === "youtube") {
+    try {
+      const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(niche)}&type=video&order=viewCount&maxResults=10&regionCode=${region}&key=${youtubeApiKey}`;
+      const searchRes = await fetch(searchUrl);
+      const searchData = await searchRes.json() as {
+        items?: { id: { videoId: string }; snippet: { title: string; channelTitle: string; publishedAt: string } }[];
+        error?: { message: string };
+      };
+
+      if (searchData.error) {
+        res.status(400).json({ error: "Video data could not be retrieved. Please try again later." });
+        return;
+      }
+
+      const videoIds = (searchData.items ?? []).map((i) => i.id.videoId).filter(Boolean).join(",");
+
+      if (videoIds) {
+        const statsUrl = `https://www.googleapis.com/youtube/v3/videos?part=statistics,snippet&id=${videoIds}&key=${youtubeApiKey}`;
+        const statsRes = await fetch(statsUrl);
+        const statsData = await statsRes.json() as {
+          items?: {
+            id: string;
+            snippet: { title: string; channelTitle: string; publishedAt: string };
+            statistics: { viewCount?: string; likeCount?: string; commentCount?: string };
+          }[];
+        };
+
+        videos = (statsData.items ?? []).map((item) => ({
+          videoId: item.id,
+          title: item.snippet.title,
+          channelTitle: item.snippet.channelTitle,
+          publishedAt: item.snippet.publishedAt,
+          viewCount: item.statistics.viewCount ?? "0",
+          likeCount: item.statistics.likeCount ?? "0",
+          commentCount: item.statistics.commentCount ?? "0",
+        }));
+      }
+    } catch (err) {
+      console.error("[viral-content] YouTube fetch error:", err);
+    }
+  }
+
+  // Platform-specific context for the AI prompt
+  const platformContext: Record<string, string> = {
+    youtube: "YouTube (long-form video, shorts, thumbnails, titles, watch time)",
+    instagram: "Instagram (Reels, carousels, static posts, Stories, captions, hashtags)",
+    tiktok: "TikTok (short-form video, hooks, trending sounds, duets, challenges)",
+    facebook: "Facebook (video posts, text posts, groups, shares, reactions)",
+    twitter: "X/Twitter (threads, single tweets, polls, spaces, engagement bait)",
+    linkedin: "LinkedIn (thought leadership posts, carousels, articles, personal stories)",
+  };
+
+  const videoContext = videos.length > 0
+    ? videos.map((v, i) =>
+        `${i + 1}. "${v.title}" by ${v.channelTitle} — ${parseInt(v.viewCount).toLocaleString()} views, ${parseInt(v.likeCount).toLocaleString()} likes, published ${new Date(v.publishedAt).toLocaleDateString()}`
+      ).join("\n")
+    : `No live data available. Use your expert knowledge of what goes viral on ${platformContext[effectivePlatform] ?? effectivePlatform} in the "${niche}" niche.`;
+
+  const prompt = `You are a viral content strategist specializing in ${niche} content on ${platformContext[effectivePlatform] ?? effectivePlatform}.
+
+Analyze what makes content go viral in the "${niche}" niche specifically on ${effectivePlatform.toUpperCase()}.
+
+${videos.length > 0 ? `Top trending content data:\n${videoContext}` : videoContext}
+
+Provide platform-specific insights for ${effectivePlatform.toUpperCase()}. Your analysis must be tailored to how ${effectivePlatform} works — not generic advice.
+
+Respond with ONLY valid JSON:
+{
+  "patterns": ["<${effectivePlatform}-specific viral pattern 1>", "<pattern 2>", "<pattern 3>", "<pattern 4>", "<pattern 5>"],
+  "hooks": ["<proven hook format for ${effectivePlatform} 1>", "<hook 2>", "<hook 3>"],
+  "contentFormats": ["<format that works on ${effectivePlatform} 1>", "<format 2>", "<format 3>"],
+  "emotionalTriggers": ["<trigger 1>", "<trigger 2>", "<trigger 3>"],
+  "actionableTips": ["<specific tip for ${effectivePlatform} 1>", "<tip 2>", "<tip 3>", "<tip 4>"],
+  "bestPostingTimes": "<when to post on ${effectivePlatform} for max reach in ${niche}>",
+  "summary": "<2-3 sentence overview of what's working in ${niche} on ${effectivePlatform} right now>"
+}`;
+
+  const aiAnalysis = await chatCompletion([
+    { role: "system", content: `You are an expert viral content strategist specializing in ${effectivePlatform} content. Respond with valid JSON only.` },
+    { role: "user", content: prompt },
+  ], { maxTokens: 1200, temperature: 0.7 });
+
+  if (!aiAnalysis) {
+    res.status(503).json({ error: "Viral content analysis is currently unavailable. Please try again later." });
+    return;
+  }
+
+  try {
+    const parsed = JSON.parse(aiAnalysis.replace(/```json|```/g, "").trim());
+    res.json({ niche, platform: effectivePlatform, region, youtubeConfigured, videos, aiAnalysis: parsed });
+  } catch {
+    res.status(500).json({ error: "Failed to parse AI response" });
+  }
+});
 
   let videos: {
     videoId: string;
